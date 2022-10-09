@@ -4,17 +4,17 @@
   
   
   <entry>
-    <title>HelloWorld</title>
+    <title>HelloWorld!</title>
     <link href="/2022/10/09/HelloWorld/"/>
     <url>/2022/10/09/HelloWorld/</url>
     
-    <content type="html"><![CDATA[<p>Hello, world! Hello, blog!  </p><p>终于有了自己的博客，从今天起会在这里不定时发布一些内容，可能是技术文章，可能是胡思乱想，也可能是我的生活。</p>]]></content>
+    <content type="html"><![CDATA[<p><strong>Hello, world! Hello, blog!</strong> </p><p>终于有了自己的博客，从今天起会在这里不定时发布一些内容，可能是技术文章，可能是胡思乱想，也可能是我的生活。</p>]]></content>
     
     
     
     <tags>
       
-      <tag>Hello, world</tag>
+      <tag>Helloworld</tag>
       
     </tags>
     
