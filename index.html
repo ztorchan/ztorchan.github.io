@@ -241,14 +241,14 @@
       <h1 class="index-header">
         
         <a href="/2022/10/21/rocksdb-write-process/" target="_self">
-          RocksDB的写流程
+          RocksDB的Put流程
         </a>
       </h1>
 
       
       <a class="index-excerpt index-excerpt__noimg" href="/2022/10/21/rocksdb-write-process/" target="_self">
         <div>
-          
+          今天这篇文章从源码自顶向下地梳理一下RocksDB的写入流程。需要强调的是，RocksDB的写入流程非常复杂，本文的主要目的是记录从用户调用Put到完成写入，过程中数据流动和调用关系，忽略了许多机制，仅保留了主干过程。 用户接口首先当然是从用户调用的接口开始探索。文档里给出了RocksDB的写入调用形式： 用户调用示例123456789rocksdb::DB* db;rocksdb::Option
         </div>
       </a>
 
@@ -256,7 +256,7 @@
         
           <div class="post-meta mr-3">
             <i class="iconfont icon-date"></i>
-            <time datetime="2022-10-21 22:08" pubdate>
+            <time datetime="2022-10-21 22:13" pubdate>
               2022-10-21
             </time>
           </div>
