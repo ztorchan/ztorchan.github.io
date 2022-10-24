@@ -349,6 +349,7 @@ navbar:
     - { key: "archive", link: "/archives/", icon: "iconfont icon-archive-fill" }
     - { key: "category", link: "/categories/", icon: "iconfont icon-category-fill" }
     - { key: "tag", link: "/tags/", icon: "iconfont icon-tags-fill" }
+    - { key: "guestbook", link: "/guestbook/", icon: "iconfont icon-speakernotes" }
     - { key: "about", link: "/about/", icon: "iconfont icon-user-fill" }
     #- { key: "links", link: "/links/", icon: "iconfont icon-link-fill" }
 
@@ -790,16 +791,16 @@ gitalk:
 # Based on LeanCloud
 # See: https://valine.js.org/
 valine:
-  appId:
-  appKey:
+  appId: YuytDEpyTHy9DT537lZ3pK2h-gzGzoHsz
+  appKey: ikKqcBQQMPUMOx6c8fWpyT3q
   path: window.location.pathname
-  placeholder:
-  avatar: 'retro'
-  meta: ['nick', 'mail', 'link']
+  placeholder: 给我留言吧
+  avatar: 'hide'
+  meta: ['nick', 'mail']
   requiredFields: []
   pageSize: 10
   lang: 'zh-CN'
-  highlight: false
+  highlight: true
   recordIP: false
   serverURLs: ''
   emojiCDN:
@@ -955,6 +956,7 @@ about:
   icons:
     - { class: "iconfont icon-github-fill", link: "https://github.com/ztorchan", tip: "GitHub" }
     - { class: "iconfont icon-wechat-fill", qrcode: "/img/icon/wechat.png" }
+    - { class: "iconfont icon-mail", tip: "chenzht37@mail2.sysu.edu.cn" }
 
 
 #---------------------------
@@ -1028,11 +1030,11 @@ links:
   # 评论插件
   # Comment plugin
   comments:
-    enable: false
+    enable: true
     # 指定的插件，需要同时设置对应插件的必要参数
     # The specified plugin needs to set the necessary parameters at the same time
     # Options: utterances | disqus | gitalk | valine | waline | changyan | livere | remark42 | twikoo | cusdis | giscus
-    type: disqus
+    type: valine
 
 
 #---------------------------
