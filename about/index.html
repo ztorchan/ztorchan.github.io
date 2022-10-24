@@ -24,7 +24,7 @@
 <meta property="og:description" content="LOL大乱斗选手，炉石酒馆战棋选手。">
 <meta property="og:locale" content="zh_CN">
 <meta property="article:published_time" content="2022-10-08T14:35:58.000Z">
-<meta property="article:modified_time" content="2022-10-24T15:06:43.627Z">
+<meta property="article:modified_time" content="2022-10-24T15:45:04.106Z">
 <meta property="article:author" content="ztorchan">
 <meta name="twitter:card" content="summary_large_image">
   
@@ -309,6 +309,28 @@
         
       
       
+  <div id="valine"></div>
+  <script type="text/javascript">
+    Fluid.utils.loadComments('#valine', function() {
+      Fluid.utils.createScript('https://lib.baomitu.com/valine/1.5.1/Valine.min.js', function() {
+        var options = Object.assign(
+          {"appId":"YuytDEpyTHy9DT537lZ3pK2h-gzGzoHsz","appKey":"ikKqcBQQMPUMOx6c8fWpyT3q","path":"window.location.pathname","placeholder":"给我留言吧","avatar":"retro","meta":["nick","mail","link"],"requiredFields":[],"pageSize":10,"lang":"zh-CN","highlight":true,"recordIP":false,"serverURLs":"","emojiCDN":null,"emojiMaps":null,"enableQQ":false},
+          {
+            el: "#valine",
+            path: window.location.pathname
+          }
+        )
+        new Valine(options);
+        Fluid.utils.waitElementVisible('#valine .vcontent', () => {
+          var imgSelector = '#valine .vcontent img:not(.vemoji)';
+          Fluid.plugins.imageCaption(imgSelector);
+          Fluid.plugins.fancyBox(imgSelector);
+        })
+      });
+    });
+  </script>
+  <noscript>Please enable JavaScript to view the comments</noscript>
+
 
     </article>
   
