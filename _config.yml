@@ -111,11 +111,11 @@ douban:
   builtin: true
   book:
     title: '读书'
-    quote: '<p class="note note-primary"><b>书中自有颜如玉</b></p>'
+    quote: '<p class="note note-primary"><font face="FangSong"><b><i>书中自有颜如玉</i></b></font></p>'
   movie:
     title: '电影'
-    quote: '<p class="note note-primary"><b>时常需要看看电影</b></p>'
+    quote: '<p class="note note-primary"><font face="FangSong"><b><i>时常需要看看电影</i></b></font></p>'
   game:
     title: '游戏'
-    quote: '<p class="note note-primary"><b>生活怎能少了游戏</b></p>'
+    quote: '<p class="note note-primary"><font face="FangSong"><b><i>生活怎能少了游戏</i></b></font></p>'
   timeout: 10000 
