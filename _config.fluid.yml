@@ -349,16 +349,17 @@ navbar:
     - { key: "archive", link: "/archives/", icon: "iconfont icon-archive-fill" }
     - { key: "category", link: "/categories/", icon: "iconfont icon-category-fill" }
     - { key: "tag", link: "/tags/", icon: "iconfont icon-tags-fill" }
-    - { key: "resource", link: "/resource/", icon: "iconfont icon-th-large"}
+    - { key: "资源", link: "/resource/", icon: "iconfont icon-th-large"}
     - { 
-        key: "list", 
+        key: "清单", 
         icon: "iconfont icon-cliplist",
         submenu: [
-          { key: "books", link: "/books/", icon: "iconfont icon-book" },
-          { key: "movies", link: "/movies/", icon: "iconfont icon-youtube-fill" },
-          { key: "games", link: "/games/", icon: "iconfont icon-switch-fill" }
-        ]}
-    - { key: "guestbook", link: "/guestbook/", icon: "iconfont icon-speakernotes" }
+          { key: "读书", link: "/books/", icon: "iconfont icon-book" },
+          { key: "电影", link: "/movies/", icon: "iconfont icon-youtube-fill" },
+          { key: "游戏", link: "/games/", icon: "iconfont icon-switch-fill" }
+        ]
+      }
+    - { key: "留言板", link: "/guestbook/", icon: "iconfont icon-speakernotes" }
     - { key: "about", link: "/about/", icon: "iconfont icon-user-fill" }
     #- { key: "links", link: "/links/", icon: "iconfont icon-link-fill" }
 
