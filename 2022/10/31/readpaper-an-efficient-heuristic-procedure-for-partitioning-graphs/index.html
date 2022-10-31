@@ -28,7 +28,7 @@
 <meta property="og:image" content="http://example.com/2022/10/31/readpaper-an-efficient-heuristic-procedure-for-partitioning-graphs/Fig3.jpg">
 <meta property="og:image" content="http://example.com/2022/10/31/readpaper-an-efficient-heuristic-procedure-for-partitioning-graphs/Fig4.jpg">
 <meta property="article:published_time" content="2022-10-31T06:43:07.000Z">
-<meta property="article:modified_time" content="2022-10-31T11:38:03.560Z">
+<meta property="article:modified_time" content="2022-10-31T11:40:56.573Z">
 <meta property="article:author" content="ztorchan">
 <meta property="article:tag" content="论文阅读">
 <meta property="article:tag" content="KL算法">
@@ -427,7 +427,7 @@
 <h2 id="不同权重的图节点"><a href="#不同权重的图节点" class="headerlink" title="不同权重的图节点"></a>不同权重的图节点</h2><p>前面讨论的过程限制了每个节点的权重为1。我们可以将一个权重$m&gt;1$的节点转化为由$m$个节点组成的集群，集群内部的每个节点间由极大权重的边互相关联，这样就可以放宽限制，使得有任意权重节点的图适用于Phase 1 Optimal Partition。但要注意到，随着各个节点的权重增大，Phase 1 Optimal Partition所要的时间也随之增大。  </p>
 <h1 id="多路划分"><a href="#多路划分" class="headerlink" title="多路划分"></a>多路划分</h1><p>上一章讨论了k路划分最具代表性的特殊情况——2路均匀划分，以及如何将其推广至划分不定大小集合和拥有不同权重图节点的情况。本章将继续拓展，讨论如何实现k路划分。</p>
 <h2 id="将问题缩小到2路划分"><a href="#将问题缩小到2路划分" class="headerlink" title="将问题缩小到2路划分"></a>将问题缩小到2路划分</h2><p>实现多路划分的基本思想是将一个图$S$随机初始划分为$k$个大小为$n$的子集，并且对所有子集两两成对，重复将2路划分应用于这些子集对上。当然这样的解决方法当然不是最优的，因为可能存在三个或三个以上子集之间的复杂交换以达成全局最优解。但在本文中没有实现的合理方法。  </p>
-<p>那么按照上述思路，一共有$\left(\begin{matrix}k \ 2 \end{matrix}\right)$对子集需要进行2路划分，而且一个pass通常是不够的，因为对某一对子集进行优化往往会破坏另一对子集之间成本的最优性。但实验发现事实上需要的pass数并不大，在大部分情况下，2轮pass即可完成95%以上的优化，而剩余更多的迭代所能给予的成本减少量非常少。</p>
+<p>那么按照上述思路，一共有$\left(\begin{matrix}k \\ 2 \end{matrix}\right)$对子集需要进行2路划分，而且一个pass通常是不够的，因为对某一对子集进行优化往往会破坏另一对子集之间成本的最优性。但实验发现事实上需要的pass数并不大，在大部分情况下，2轮pass即可完成95%以上的优化，而剩余更多的迭代所能给予的成本减少量非常少。</p>
 <h2 id="初始划分"><a href="#初始划分" class="headerlink" title="初始划分"></a>初始划分</h2><p>因为实现多路划分是将2路划分的思想应用于初始多路划分中，初始划分的重要性也就不言而喻了。找到一个好的初始划分不仅能减少系统成对优化的工作量，还能使达到最优解决方案的概率提升。作者给出了两个形成初始划分的方法：</p>
 <ol>
 <li>给定一个图$S$，为了形成一个$k$路初始划分，先形成一个$r$路划分。对$r$路划分的每一个子集再做$s$路划分，以此类推直到形成$k$路划分（$k&#x3D;rs…$）。注意每次划分都是有优化过程的。但是这种方法有缺陷：在首次$r$路划分会使各个子集的内部成本尽可能的高，这与各个子集后续的$s$路划分产生了冲突。这样经历几个层次的划分，可能导致一个相对较差的结果。</li>
