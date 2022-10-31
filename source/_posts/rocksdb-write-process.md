@@ -191,7 +191,7 @@ varstring :=
    len: varint32
    data: uint8[len]
 ```
-![](/img/post_img/rocksdb-write-process/fig1.png)  
+![](/img/post_img/rocksdb-write-process/fig1.png#pic_center)  
 
 `rep_`的开头放置`fixed64`类型的序列号，第二位是`fixed32`类型的当前记录数，随后是各条操作记录。可以看到每条记录都是以`操作类型 + 操作内容`的形式构成的，且为了更契合Rocksdb的需求，同时为了节省空间，采用了一种变长字符串`varstring`的编码方法。关于`rep_`内各种数据类型的编解码实现在`util/coding.h`和`util/coding.cc`内，在本文不做分析。
 
