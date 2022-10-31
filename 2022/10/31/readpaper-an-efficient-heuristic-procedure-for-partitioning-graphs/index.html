@@ -23,17 +23,17 @@
 <meta property="og:site_name" content="ZTorchan">
 <meta property="og:description" content="今天要读的论文是大名鼎鼎的图划分算法——KL算法的原文：An Efficient Heuristic Procedure for Partitioning Graphs">
 <meta property="og:locale" content="zh_CN">
-<meta property="og:image" content="http://example.com/2022/10/31/readpaper-an-efficient-heuristic-procedure-for-partitioning-graphs/Fig1.jpg#pic_center">
-<meta property="og:image" content="http://example.com/2022/10/31/readpaper-an-efficient-heuristic-procedure-for-partitioning-graphs/Fig2.jpg#pic_center">
-<meta property="og:image" content="http://example.com/2022/10/31/readpaper-an-efficient-heuristic-procedure-for-partitioning-graphs/Fig3.jpg#pic_center">
-<meta property="og:image" content="http://example.com/2022/10/31/readpaper-an-efficient-heuristic-procedure-for-partitioning-graphs/Fig4.jpg#pic_center">
+<meta property="og:image" content="http://example.com/2022/10/31/readpaper-an-efficient-heuristic-procedure-for-partitioning-graphs/Fig1.jpg">
+<meta property="og:image" content="http://example.com/2022/10/31/readpaper-an-efficient-heuristic-procedure-for-partitioning-graphs/Fig2.jpg">
+<meta property="og:image" content="http://example.com/2022/10/31/readpaper-an-efficient-heuristic-procedure-for-partitioning-graphs/Fig3.jpg">
+<meta property="og:image" content="http://example.com/2022/10/31/readpaper-an-efficient-heuristic-procedure-for-partitioning-graphs/Fig4.jpg">
 <meta property="article:published_time" content="2022-10-31T06:43:07.000Z">
-<meta property="article:modified_time" content="2022-10-31T07:27:03.015Z">
+<meta property="article:modified_time" content="2022-10-31T07:30:55.431Z">
 <meta property="article:author" content="ztorchan">
 <meta property="article:tag" content="论文阅读">
 <meta property="article:tag" content="KL算法">
 <meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:image" content="http://example.com/2022/10/31/readpaper-an-efficient-heuristic-procedure-for-partitioning-graphs/Fig1.jpg#pic_center">
+<meta name="twitter:image" content="http://example.com/2022/10/31/readpaper-an-efficient-heuristic-procedure-for-partitioning-graphs/Fig1.jpg">
   
   
     <meta name="referrer" content="no-referrer-when-downgrade">
@@ -364,10 +364,10 @@
 <p><em>Paper Link</em>：https://ieeexplore.ieee.org/abstract/document/6771089</p>
 <h1 id="引言">引言</h1>
 <h2 id="问题是什么">问题是什么</h2>
-<p><img src="Fig1.jpg#pic_center" srcset="/img/loading.gif" lazyload alt="Fig1. 问题的定义" /><br />
+<p><img src="Fig1.jpg" srcset="/img/loading.gif" lazyload alt="Fig1. 问题的定义" /><br />
 本文所提出的是一个图划分算法。给定一个图，它的边带有权重。将的节点划分为数个子集，每个自己内包含的节点的权重之和不超过给定的最大值，同时要求划分后各部分之间的边权重之和最小。<br />
 更具体的，从数学形式上给出定义：<br />
-<img src="Fig2.jpg#pic_center" srcset="/img/loading.gif" lazyload alt="Fig2. 数学形式定义" /><br />
+<img src="Fig2.jpg" srcset="/img/loading.gif" lazyload alt="Fig2. 数学形式定义" /><br />
 &gt; 令<span class="math inline">\(G\)</span>为一个有<span class="math inline">\(n\)</span>个节点的图，其中第<span class="math inline">\(i\)</span>个节点的权重为<span class="math inline">\(w_i(w_i &gt; 0, i = 1, ... , n)\)</span>。令<span class="math inline">\(p\)</span>为一个正数，对于所有的<span class="math inline">\(i=1, ..., n\)</span>，有<span class="math inline">\(0 &lt; w_i \leq p\)</span>。令<span class="math inline">\(C = (c_{ij})\)</span>，其中<span class="math inline">\(i, j = 1, ..., n\)</span>，表示图<span class="math inline">\(G\)</span>的带权邻接矩阵。<br />
 &gt; 令<span class="math inline">\(k\)</span>为一个正整数。一个对图<span class="math inline">\(G\)</span>的<span class="math inline">\(\pmb{k}\)</span><strong>路划分</strong>是<span class="math inline">\(G\)</span>的一组非空且两两不相交的子集<span class="math inline">\(v_1, ..., v_k\)</span>，且有<span class="math inline">\(\bigcup_{i=1}^{k}{v_i} = G\)</span>。一个可接受的划分需要所有子集内的节点权重之和小于<span class="math inline">\(p\)</span>，即： &gt; <span class="math display">\[\lvert{v_i}\rvert \leq p \]</span> &gt; 其中<span class="math inline">\(\lvert x \rvert\)</span>表示集合<span class="math inline">\(x\)</span>的大小，等于<span class="math inline">\(x\)</span>的所有元素大小的和。一个划分的<strong>成本（cost）</strong> 指的是<span class="math inline">\(c_{ij}\)</span>的和，其中<span class="math inline">\(i\)</span>和<span class="math inline">\(j\)</span>属于不同的子集。因此，成本是划分中所有外部成本的和。 &gt; 这个问题在许多显示场景下都有体现，例如将众多电子元件布置在印刷电路卡上，每个卡能容纳的电子元件有限，且卡与卡之间的连接成本较卡内连接要高，要尽可能减少电路卡之间的连接。还有一个场景是程序的分页。<br />
 本文所要解决的问题就是找到<strong>一种能够满足条件且成本最小化的划分方法</strong>。事实上，这个问题等价于另外三个问题：（1）由于总的边权重的值不变，最小化外部成本相当于最大化内部成本；（2）通过改变<span class="math inline">\(c_{ij}\)</span>的符号，还可以实现最大化外部成本，同时也是最小化内部成本。</p>
@@ -393,7 +393,7 @@
 <p>最简单且最具代表性的划分问题莫过于<strong>2路均匀划分</strong>了，即将给定包含了<span class="math inline">\(2n\)</span>个节点的图划分为两个分别包含了<span class="math inline">\(n\)</span>个节点的子集，且使成本最小。解决这个问题将为更一般的图划分问题提供了基础。</p>
 <h2 id="基本思路">基本思路</h2>
 <p>给定图<span class="math inline">\(S\)</span>，假定<span class="math inline">\(A^{*}\)</span>和<span class="math inline">\(B^{*}\)</span>是最佳的2路划分。设<span class="math inline">\(A\)</span>和<span class="math inline">\(B\)</span>是一对任意的2路划分。那么很显然存在<span class="math inline">\(X\subset A\)</span>，<span class="math inline">\(Y\subset B\)</span>且<span class="math inline">\(\lvert{X}\rvert=\lvert{Y}\rvert\leq\frac{n}{2}\)</span>使得<span class="math inline">\(X\)</span>和<span class="math inline">\(Y\)</span>交换后产生<span class="math inline">\(A^{*}\)</span>和<span class="math inline">\(B^{*}\)</span>。<br />
-<img src="Fig3.jpg#pic_center" srcset="/img/loading.gif" lazyload alt="Fig3. 得到最优解" /><br />
+<img src="Fig3.jpg" srcset="/img/loading.gif" lazyload alt="Fig3. 得到最优解" /><br />
 因此，为了实现目标，我们可以从任意的2路均匀划分开始，依据当前状态通过一定的算法从<span class="math inline">\(A\)</span>，<span class="math inline">\(B\)</span>中选出<span class="math inline">\(X\)</span>，<span class="math inline">\(Y\)</span>并交换，以降低外部成本。迭代交换步骤直到不可再继续降低外部成本时，我们就得到了一个局部最优解。我们在后续会表明，这个局部最优解有很大概率是全局最优解。我们可以选取多个初始划分，重复多次上述过程，得到多个局部最优解以比较。</p>
 <p>那么如何决定交换的集合<span class="math inline">\(X\)</span>和<span class="math inline">\(Y\)</span>呢？我们先给出一些定义： &gt; - 对于任意<span class="math inline">\({a}\in{A}\)</span>，其外部成本<span class="math inline">\({E_a}=\sum_{ y\in{B} }c_{ay}\)</span>，内部成本<span class="math inline">\({I_a}=\sum_{ x\in{A} }c_{ax}\)</span>。对任意<span class="math inline">\({b}\in{B}\)</span>，同理定义<span class="math inline">\({E_b}和\)</span>{I_b}。 &gt; - 对所有<span class="math inline">\({z}\in{S}\)</span>，有<span class="math inline">\(D_{z}=E_{z}-I{z}\)</span>，<span class="math inline">\(D_{z}\)</span>为该节点的外部成本与内部成本之差</p>
 <p>以上述定义为基础，我们能给出如下定理： &gt; <strong>定理1</strong>：对于任意的<span class="math inline">\({a}\in{A}\)</span>, <span class="math inline">\({b}\in{B}\)</span>。若<span class="math inline">\(a\)</span>和<span class="math inline">\(b\)</span>交换，那么总体的外部成本减少量为<span class="math inline">\(D_a+D_b-2c_{ab}\)</span>。<br />
@@ -401,7 +401,7 @@
 <p>定理1就可以成为我们选择<span class="math inline">\(a\)</span>和<span class="math inline">\(b\)</span>的依据。</p>
 <h2 id="流程">流程</h2>
 <p>本节阐述进行2路划分的算法流程：<br />
-<img src="Fig4.jpg#pic_center" srcset="/img/loading.gif" lazyload alt="Fig4. Phase 1 Optimal Partition" /> &gt; 1. 对<span class="math inline">\(S\)</span>内的每个节点计算其外部成本与内部成本之差，即<span class="math inline">\(D\)</span> &gt; 2. 选择<span class="math inline">\({a_i}\in{A}, {b_i}\in{B}\)</span>使得下式最大，则交换<span class="math inline">\({a_i}\)</span>和<span class="math inline">\({b_i}\)</span>可以获得最大的划分成本减少量。将选出的<span class="math inline">\({a_i}\)</span>和<span class="math inline">\({b_i}\)</span>称作<span class="math inline">\({ {a_1}\rq }\)</span>和<span class="math inline">\({ {b_1}\rq }\)</span>，并暂时搁置 &gt; <span class="math display">\[ {g_1} = { D_{a_i} } + { D_{b_i} } - 2{ c_{ {a_i}{b_i} } }\]</span> &gt; 3. 对<span class="math inline">\(A-\{a_i\}\)</span>和<span class="math inline">\(B-\{b_i\}\)</span>的所有结点重新计算<span class="math inline">\(D\)</span>，计算式如下（这是假设了<span class="math inline">\(a_i\)</span>和<span class="math inline">\(b_i\)</span>已经作了交换，证明比较简单，不再说明，实在不清楚可以翻阅原文）： &gt; <span class="math display">\[
+<img src="Fig4.jpg" srcset="/img/loading.gif" lazyload alt="Fig4. Phase 1 Optimal Partition" /> &gt; 1. 对<span class="math inline">\(S\)</span>内的每个节点计算其外部成本与内部成本之差，即<span class="math inline">\(D\)</span> &gt; 2. 选择<span class="math inline">\({a_i}\in{A}, {b_i}\in{B}\)</span>使得下式最大，则交换<span class="math inline">\({a_i}\)</span>和<span class="math inline">\({b_i}\)</span>可以获得最大的划分成本减少量。将选出的<span class="math inline">\({a_i}\)</span>和<span class="math inline">\({b_i}\)</span>称作<span class="math inline">\({ {a_1}\rq }\)</span>和<span class="math inline">\({ {b_1}\rq }\)</span>，并暂时搁置 &gt; <span class="math display">\[ {g_1} = { D_{a_i} } + { D_{b_i} } - 2{ c_{ {a_i}{b_i} } }\]</span> &gt; 3. 对<span class="math inline">\(A-\{a_i\}\)</span>和<span class="math inline">\(B-\{b_i\}\)</span>的所有结点重新计算<span class="math inline">\(D\)</span>，计算式如下（这是假设了<span class="math inline">\(a_i\)</span>和<span class="math inline">\(b_i\)</span>已经作了交换，证明比较简单，不再说明，实在不清楚可以翻阅原文）： &gt; <span class="math display">\[
 &gt; {D}\rq_x = D_x + 2c_{ x{a_i} } - 2c_{ x{b_i} } \quad \quad x \in A-\{a_i\} \\
 &gt; {D}\rq_y = D_y + 2c_{ y{b_i} } - 2c_{ y{a_i} } \quad \quad x \in B-\{b_i\}
 &gt; \]</span> &gt; 4. 重复步骤2、3，继续挑选。要注意，每次选择出一对<span class="math inline">\({a\rq}\)</span>和<span class="math inline">\({b\rq}\)</span>，都需要将他们剔除，不再参与后续的选择。这样进行直到对整个<span class="math inline">\(S\)</span>内的所有节点都完成选择后，得到<span class="math inline">\({ {a_1}\rq }\)</span>和<span class="math inline">\({ {b_1}\rq }\)</span>、...、<span class="math inline">\({ {a_n}\rq }\)</span>和<span class="math inline">\({ {b_n}\rq }\)</span>的节点对，与之对应的有<span class="math inline">\(g_1\)</span>、...、<span class="math inline">\(g_n\)</span>。 &gt; 5. <span class="math inline">\(g_1\)</span>、...、<span class="math inline">\(g_n\)</span>不一定全都是正数，选择一个值<span class="math inline">\(k\)</span>，使得<span class="math inline">\(\sum_{i=1}^{k}{g_i} = G\)</span>最大。此时，若<span class="math inline">\(G&gt;0\)</span>，交换<span class="math inline">\(X = \{ { {a_1}\rq }, ..., { {a_k}\rq }\}\)</span>和<span class="math inline">\(Y = \{ { {b_1}\rq }, ..., { {b_k}\rq }\}\)</span>可以使划分成本减小<span class="math inline">\(G\)</span>。 &gt; 6. 此时得到一个新的划分，随后重新回到步骤1进行下一轮交换。重复这个过程直到<span class="math inline">\(G=0\)</span>，此时便得到了一个局部最优划分。</p>
