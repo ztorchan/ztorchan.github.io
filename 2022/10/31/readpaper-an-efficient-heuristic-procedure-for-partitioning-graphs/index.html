@@ -28,7 +28,7 @@
 <meta property="og:image" content="http://example.com/2022/10/31/readpaper-an-efficient-heuristic-procedure-for-partitioning-graphs/Fig3.jpg">
 <meta property="og:image" content="http://example.com/2022/10/31/readpaper-an-efficient-heuristic-procedure-for-partitioning-graphs/Fig4.jpg">
 <meta property="article:published_time" content="2022-10-31T06:43:07.000Z">
-<meta property="article:modified_time" content="2022-10-31T11:30:02.994Z">
+<meta property="article:modified_time" content="2022-10-31T11:38:03.560Z">
 <meta property="article:author" content="ztorchan">
 <meta property="article:tag" content="论文阅读">
 <meta property="article:tag" content="KL算法">
@@ -372,7 +372,7 @@
 
 <p>这个问题在许多显示场景下都有体现，例如将众多电子元件布置在印刷电路卡上，每个卡能容纳的电子元件有限，且卡与卡之间的连接成本较卡内连接要高，要尽可能减少电路卡之间的连接。还有一个场景是程序的分页。  </p>
 <p>本文所要解决的问题就是找到<strong>一种能够满足条件且成本最小化的划分方法</strong>。事实上，这个问题等价于另外三个问题：（1）由于总的边权重的值不变，最小化外部成本相当于最大化内部成本；（2）通过改变$c_{ij}$的符号，还可以实现最大化外部成本，同时也是最小化内部成本。</p>
-<h2 id="问题的难点"><a href="#问题的难点" class="headerlink" title="问题的难点"></a>问题的难点</h2><p>通常碰到这类问题，暴力穷举自然而然地就出现在我们的脑子里。但是考虑一个有$n$个节点，且每个节点权重为1的图$G$，将其划分为$k$个集合，每个集合大小为$p$（这里假设了$kp&#x3D;n$）。在这样简明的情况下，包含的情况数为：<br>$$<br>\frac{1}{k!}<br>\left(\begin{matrix}n \ p \end{matrix}\right)<br>\left(\begin{matrix}n-p \ p \end{matrix}\right)<br>…<br>\left(\begin{matrix}2p \ p \end{matrix}\right)<br>\left(\begin{matrix}p \ p \end{matrix}\right)<br>$$<br>进行穷举的复杂度高的难以接受。  </p>
+<h2 id="问题的难点"><a href="#问题的难点" class="headerlink" title="问题的难点"></a>问题的难点</h2><p>通常碰到这类问题，暴力穷举自然而然地就出现在我们的脑子里。但是考虑一个有$n$个节点，且每个节点权重为1的图$G$，将其划分为$k$个集合，每个集合大小为$p$（这里假设了$kp&#x3D;n$）。在这样简明的情况下，包含的情况数为：<br>$$<br>\frac{1}{k!}<br>\left(\begin{matrix} n \\ p \end{matrix}\right)<br>\left(\begin{matrix} n-p \\ p \end{matrix}\right)<br>…<br>\left(\begin{matrix} 2p \\ p \end{matrix}\right)<br>\left(\begin{matrix} p \\ p \end{matrix}\right)<br>$$<br>进行穷举的复杂度高的难以接受。  </p>
 <p>从形式上看，这个问题也可以作为整数线性规划问题来解决，但这需要大量的约束方程来表达分区的均匀性，难度非常高。  </p>
 <p>似乎任何一个寻找最优解的方法都需要大量的计算，那么放弃确切的最优解，转而以较小运算量得到一个良好解的启发式算法似乎是更好的选择。为这类问题开发启发式算法的首要目标是找到一个功能强大，而且速度快到足以能运用在实际场景下的过程。时间复杂度不仅要考虑限制在指数级下，最要好限制在平方量级之内。</p>
 <h2 id="几个失败的尝试"><a href="#几个失败的尝试" class="headerlink" title="几个失败的尝试"></a>几个失败的尝试</h2><ul>
