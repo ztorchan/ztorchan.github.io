@@ -28,7 +28,7 @@
 <meta property="og:image" content="http://example.com/2022/10/31/readpaper-an-efficient-heuristic-procedure-for-partitioning-graphs/Fig3.jpg">
 <meta property="og:image" content="http://example.com/2022/10/31/readpaper-an-efficient-heuristic-procedure-for-partitioning-graphs/Fig4.jpg">
 <meta property="article:published_time" content="2022-10-31T06:43:07.000Z">
-<meta property="article:modified_time" content="2022-10-31T11:40:56.573Z">
+<meta property="article:modified_time" content="2022-11-01T02:44:25.201Z">
 <meta property="article:author" content="ztorchan">
 <meta property="article:tag" content="论文阅读">
 <meta property="article:tag" content="KL算法">
@@ -398,7 +398,7 @@
 <p>定理1就可以成为我们选择$a$和$b$的依据。</p>
 <h2 id="流程"><a href="#流程" class="headerlink" title="流程"></a>流程</h2><p>本节阐述进行2路划分的算法流程：<br><img src="/2022/10/31/readpaper-an-efficient-heuristic-procedure-for-partitioning-graphs/Fig4.jpg" srcset="/img/loading.gif" lazyload alt="Fig4. Phase 1 Optimal Partition">  </p>
 <div class="note note-info">
-            <ol><li>对$S$内的每个节点计算其外部成本与内部成本之差，即$D$</li><li>选择${a_i}\in{A}, {b_i}\in{B}$使得下式最大，则交换${a_i}$和${b_i}$可以获得最大的划分成本减少量。将选出的${a_i}$和${b_i}$称作${a’<em>1}$和${b’<em>1}$，并暂时搁置<br>$$ {g_1} &#x3D; { D</em>{a_i} } + { D</em>{b_i} } - 2{ c_{ {a_i}{b_i} } }$$</li><li>对$A-{a_i}$和$B-{b_i}$的所有结点重新计算$D$，计算式如下（这是假设了$a_i$和$b_i$已经作了交换，证明比较简单，不再说明，实在不清楚可以翻阅原文）：<br>$$<br>D’<em>x &#x3D; D_x + 2c</em>{ x{a_i} } - 2c_{ x{b_i} } \quad \quad x \in A-{a_i} \<br>D’<em>y &#x3D; D_y + 2c</em>{ y{b_i} } - 2c_{ y{a_i} } \quad \quad x \in B-{b_i}<br>$$</li><li>重复步骤2、3，继续挑选。要注意，每次选择出一对$a’$和$b’$，都需要将他们剔除，不再参与后续的选择。这样进行直到对整个$S$内的所有节点都完成选择后，得到$a’_1$和$b’_1$、…、$a’_n$和$b’_n$的节点对，与之对应的有$g_1$、…、$g_n$。</li><li>$g_1$、…、$g_n$不一定全都是正数，选择一个值$k$，使得$\sum_{i&#x3D;1}^{k}{g_i} &#x3D; G$最大。此时，若$G&gt;0$，交换$X &#x3D; { a’_1, …, a’_k}$和$Y &#x3D; { b’_1, …, b’_k }$可以使划分成本减小$G$。</li><li>此时得到一个新的划分，随后重新回到步骤1进行下一轮交换。重复这个过程直到$G&#x3D;0$，此时便得到了一个局部最优划分。</li></ol>
+            <ol><li>对$S$内的每个节点计算其外部成本与内部成本之差，即$D$</li><li>选择${a_i}\in{A}, {b_i}\in{B}$使得下式最大，则交换${a_i}$和${b_i}$可以获得最大的划分成本减少量。将选出的${a_i}$和${b_i}$称作${a’<em>1}$和${b’<em>1}$，并暂时搁置<br>$$ {g_1} &#x3D; { D</em>{a_i} } + { D</em>{b_i} } - 2{ c_{ {a_i}{b_i} } }$$</li><li>对$A-{a_i}$和$B-{b_i}$的所有结点重新计算$D$，计算式如下（这是假设了$a_i$和$b_i$已经作了交换，证明比较简单，不再说明，实在不清楚可以翻阅原文）：<br>$$<br>D’<em>x &#x3D; D_x + 2c</em>{ x{a_i} } - 2c_{ x{b_i} } \quad \quad x \in A-{a_i} \\<br>D’<em>y &#x3D; D_y + 2c</em>{ y{b_i} } - 2c_{ y{a_i} } \quad \quad x \in B-{b_i}<br>$$</li><li>重复步骤2、3，继续挑选。要注意，每次选择出一对$a’$和$b’$，都需要将他们剔除，不再参与后续的选择。这样进行直到对整个$S$内的所有节点都完成选择后，得到$a’_1$和$b’_1$、…、$a’_n$和$b’_n$的节点对，与之对应的有$g_1$、…、$g_n$。</li><li>$g_1$、…、$g_n$不一定全都是正数，选择一个值$k$，使得$\sum_{i&#x3D;1}^{k}{g_i} &#x3D; G$最大。此时，若$G&gt;0$，交换$X &#x3D; { a’_1, …, a’_k}$和$Y &#x3D; { b’_1, …, b’_k }$可以使划分成本减小$G$。</li><li>此时得到一个新的划分，随后重新回到步骤1进行下一轮交换。重复这个过程直到$G&#x3D;0$，此时便得到了一个局部最优划分。</li></ol>
           </div>  
 
 <p>上述算法流程可以从一个初始划分找到它的局部最优化分，我们称之为<strong>Phase 1 Optimal Partition</strong>。我们可以选择多从几个随机初始划分得到它们的Phase 1 Optimal Partition，或者进一步地优化Phase 1 Optimal Partition。 </p>
