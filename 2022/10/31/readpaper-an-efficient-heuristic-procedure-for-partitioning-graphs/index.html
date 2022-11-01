@@ -28,7 +28,7 @@
 <meta property="og:image" content="http://example.com/2022/10/31/readpaper-an-efficient-heuristic-procedure-for-partitioning-graphs/Fig3.jpg">
 <meta property="og:image" content="http://example.com/2022/10/31/readpaper-an-efficient-heuristic-procedure-for-partitioning-graphs/Fig4.jpg">
 <meta property="article:published_time" content="2022-10-31T06:43:07.000Z">
-<meta property="article:modified_time" content="2022-11-01T09:57:01.261Z">
+<meta property="article:modified_time" content="2022-11-01T10:08:02.695Z">
 <meta property="article:author" content="ztorchan">
 <meta property="article:tag" content="论文阅读">
 <meta property="article:tag" content="KL算法">
@@ -419,7 +419,11 @@
           </div></p>
 <p>上述算法流程可以从一个初始划分找到它的局部最优化分，我们称之为<strong>Phase 1 Optimal Partition</strong>。我们可以选择多从几个随机初始划分得到它们的Phase 1 Optimal Partition，或者进一步地优化Phase 1 Optimal Partition。</p>
 <h2 id="方法的有效性">方法的有效性</h2>
-<p>Phase 1 Optimal Partition有几个特点： 1. 寻常的方法是要交换<span class="math inline">\(A\)</span>和<span class="math inline">\(B\)</span>中的<span class="math inline">\(λ\)</span>对顶点，这个<span class="math inline">\(λ\)</span>是预先确定的数值。这会导致<span class="math inline">\(λ\)</span>过小时效果不佳，但若增大<span class="math inline">\(λ\)</span>会导致计算量急剧上升。而Phase 1 Optimal Partition的<span class="math inline">\(λ\)</span>是动态变化的，尽可能地选择<span class="math inline">\(λ\)</span>使得交换带来的提升足够大，同时计算速度也足够快。 2. 前面有提到，并非每个<span class="math inline">\(g_i\)</span>都是正数，但算法流程不会在遇到负的<span class="math inline">\(g_i\)</span>时就终止。这就是说，Phase 1 Optimal Partition能找到一对交换集合，交换集合中的几个元素可能会导致划分成本的增大，但交换整个集合能够带来足够大的净收益。</p>
+<p>Phase 1 Optimal Partition有几个特点：</p>
+<ol type="1">
+<li>寻常的方法是要交换<span class="math inline">\(A\)</span>和<span class="math inline">\(B\)</span>中的<span class="math inline">\(λ\)</span>对顶点，这个<span class="math inline">\(λ\)</span>是预先确定的数值。这会导致<span class="math inline">\(λ\)</span>过小时效果不佳，但若增大<span class="math inline">\(λ\)</span>会导致计算量急剧上升。而Phase 1 Optimal Partition的<span class="math inline">\(λ\)</span>是动态变化的，尽可能地选择<span class="math inline">\(λ\)</span>使得交换带来的提升足够大，同时计算速度也足够快。</li>
+<li>前面有提到，并非每个<span class="math inline">\(g_i\)</span>都是正数，但算法流程不会在遇到负的<span class="math inline">\(g_i\)</span>时就终止。这就是说，Phase 1 Optimal Partition能找到一对交换集合，交换集合中的几个元素可能会导致划分成本的增大，但交换整个集合能够带来足够大的净收益。</li>
+</ol>
 <p>我们知道Phase 1 Optimal Partition找到的是一个局部最优解，而为了探究局部最优解有多大概率为全局最优解，作者也进行了实验。文章在包括0-1矩阵、均匀分布的矩阵在内的多种矩阵上进行了实验，得到的结果比较相似。在<span class="math inline">\(30×30\)</span>的矩阵上平均概率约为<span class="math inline">\(0.5\)</span>，在<span class="math inline">\(60×60\)</span>的矩阵上平均概率约为<span class="math inline">\(0.2 \sim 0.3\)</span>，在<span class="math inline">\(120×120\)</span>的矩阵上平均概率约为<span class="math inline">\(0.05 \sim 0.1\)</span>。可以总结出一个大约的经验公式： <span class="math display">\[p(n)=2^{\frac{-n}{30}}\]</span></p>
 <h2 id="运行时间分析">运行时间分析</h2>
 <p>本节对方法的运行时间进行分析。我们对算法的各个步骤进行考察，分析每个过程的时间复杂度。要注意这里分析的只是对一次<span class="math inline">\(X\)</span>和<span class="math inline">\(Y\)</span>选定所需的时间（称之为1个<strong>pass</strong>），而不是从初始划分到局部最优解所需的时间。</p>
