@@ -50,12 +50,14 @@ date: 2022-10-27 00:27:49
 ### **一些视频课程（Bilibili）**
   - [CMU-15-445/645: Database Systems (Fall 2019)](https://www.bilibili.com/video/BV1kG4y1e7Gy/?from=search&seid=17867353845681690372&spm_id_from=333.337.0.0&vd_source=ce13f5f0fa62d6df25f6ea1a5fc9b8ad)
   - [CMU 15-445: Database Systems (Fall 2022, 未更完)](https://www.bilibili.com/video/BV1xa41137S4/?from=search&seid=17867353845681690372&spm_id_from=333.337.0.0&vd_source=ce13f5f0fa62d6df25f6ea1a5fc9b8ad) 及 [课程资料](https://15445.courses.cs.cmu.edu/fall2022/schedule.html)
-  - [MIT 6.824: Distributed Systems (Fall 2020)](https://www.bilibili.com/video/BV1R7411t71W/?spm_id_from=333.999.0.0&vd_source=ce13f5f0fa62d6df25f6ea1a5fc9b8ad) 及 [课程资料](http://nil.csail.mit.edu/6.824/2020/schedule.html)
+  - [MIT 6.824: Distributed Systems (Fall 2020)](https://www.bilibili.com/video/BV1R7411t71W/?spm_id_from=333.999.0.0&vd_source=ce13f5f0fa62d6df25f6ea1a5fc9b8ad) 及 [课程资料](http://nil.csail.mit.edu/6.824/2020/schedule.html)，还有[中文文字版](https://mit-public-courses-cn-translatio.gitbook.io/mit6-824/)
   - [CMU 15-213: CSAPP (Fall 2015)](https://www.bilibili.com/video/BV1iW411d7hd/?spm_id_from=333.999.0.0&vd_source=ce13f5f0fa62d6df25f6ea1a5fc9b8ad) 及 [课程资料](http://www.cs.cmu.edu/afs/cs/academic/class/15213-f15/www/schedule.html)
 
 ### **一些收藏的网站**
+  - [Overleaf](https://cn.overleaf.com/)：在线Latex编辑编译。
   - [Wallhaven](https://wallhaven.cc/)：个人感觉最好的壁纸网站，类型丰富，质量贼高，而且支持各种分辨率下载，最重要的是免费！
   - [Iconfont](https://www.iconfont.cn/)：图标网站，我一般就在这找了。
   - [AsciiFlow](https://asciiflow.com/#/)：平时写代码在这里画一画类的引用关系图，可以生成ASCII字符构成的视觉图像，插到注释里。
   - [ReadPaper](https://readpaper.com/)：一个很好的论文阅读工具，支持翻译、笔记，还会自动提取Figure和Table方便阅读，最赞的是可以快速查找引用文献给出摘要。
   - [WakaTime](https://wakatime.com/)：记录你的代码时间，提高成就感！
+  - [Linux命令查询](https://wangchujiang.com/linux-command/)：快速搜索Linux命令使用。

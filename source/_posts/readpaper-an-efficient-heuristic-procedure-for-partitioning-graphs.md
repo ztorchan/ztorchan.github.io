@@ -5,6 +5,7 @@ tags:
   - KL算法
 categories:
   - 论文阅读
+  - 经典论文系列
 date: 2022-10-31 14:43:07
 math: true
 ---

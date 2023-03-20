@@ -110,7 +110,7 @@ deploy:
   branch: master
 
 douban:
-  user: Ztorchan
+  id: 238692810
   builtin: true
   book:
     title: '读书'
