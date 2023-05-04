@@ -15,6 +15,7 @@ date: 2022-10-27 00:27:49
   - [compiler support](https://zh.cppreference.com/w/cpp/compiler_support)
   - [GCC, the GNU Compiler Collection](https://gcc.gnu.org/)
   - [跟我一起写Makefile](https://seisman.github.io/how-to-write-makefile/)
+  - [Makefile Tutorial](https://makefiletutorial.vercel.app/)
   - [CMake document](https://cmake.org/documentation/)
 - **关于C++学习很赞的各种资源集合（包括书、社区、第三方库等等的）**
   - [Awesome Modern C++](https://awesomecpp.com/)
@@ -38,6 +39,14 @@ date: 2022-10-27 00:27:49
   - [Asynchronous Programming in Rust](https://rust-lang.github.io/async-book/)
   - [The Rustonomicon](https://doc.rust-lang.org/nomicon/)
   - [The Cargo Book](https://doc.rust-lang.org/cargo/)
+
+### **Linux**
+- **核心网站**
+  - 官方：[kernel.org](kernel.org)
+  - 社区：[linux.org](linux.org)
+  - GNU：[gnu.org](gnu.org)
+- **好用的站点**
+  - [x86架构Linux系统调用查询](https://filippo.io/linux-syscall-table/)
 
 ### **分布式和存储**
 - **学习**
