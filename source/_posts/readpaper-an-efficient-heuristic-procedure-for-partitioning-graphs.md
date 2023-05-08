@@ -2,10 +2,8 @@
 title: 论文阅读 | KL算法：An Efficient Heuristic Procedure for Partitioning Graphs
 tags:
   - 论文阅读
-  - KL算法
 categories:
   - 论文阅读
-  - 经典论文系列
 date: 2022-10-31 14:43:07
 math: true
 ---

@@ -47,6 +47,16 @@ date: 2022-10-27 00:27:49
   - GNU：[gnu.org](gnu.org)
 - **好用的站点**
   - [x86架构Linux系统调用查询](https://filippo.io/linux-syscall-table/)
+  - [内核函数解析和用例](https://deepinout.com/linux-kernel-api)
+  - [很好的Linux专栏](https://zhuanlan.zhihu.com/p/93289632)
+
+### **RDMA**
+- **一些官方站点**
+  - [驱动和用户手册](https://network.nvidia.com/products/infiniband-drivers/linux/mlnx_ofed/)
+- **学习**
+  - [很不错的专栏](https://www.zhihu.com/column/c_1231181516811390976)
+  - [RDMAmojo](http://www.rdmamojo.com/)
+  - [练习](https://www.openfabrics.org/training/)
 
 ### **分布式和存储**
 - **学习**
@@ -70,3 +80,4 @@ date: 2022-10-27 00:27:49
   - [ReadPaper](https://readpaper.com/)：一个很好的论文阅读工具，支持翻译、笔记，还会自动提取Figure和Table方便阅读，最赞的是可以快速查找引用文献给出摘要。
   - [WakaTime](https://wakatime.com/)：记录你的代码时间，提高成就感！
   - [Linux命令查询](https://wangchujiang.com/linux-command/)：快速搜索Linux命令使用。
+  - [Grammarly](https://www.grammarly.com)：英文语法检查。

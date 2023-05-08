@@ -3,8 +3,9 @@ title: 论文阅读 | Fisc：A Large-scale Cloud-native-oriented File System
 tags:
   - 分布式系统
   - 文件系统
+  - 论文阅读
 categories:
-  - 分布式文件系统
+  - 论文阅读
 date: 2023-03-15 13:36:00
 ---
 
