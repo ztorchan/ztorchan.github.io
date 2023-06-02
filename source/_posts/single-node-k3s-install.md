@@ -1,5 +1,5 @@
 ---
-title: 单机部署k3s
+title: 单机部署K3s
 tags:
   - K8s
   - K3s
@@ -24,11 +24,11 @@ date: 2023-05-07 12:24:36
 > \* 操作系统Ubuntu Server 22.04 LTS 64bit, 内核Linux 5.15.0-56-generic  
 > \* 目标版本：1.25.9  
 
-# 1 Docker
+## Docker
 
-K3s包含并且默认[containerd]作为容器运行时，但是就我的体验来说docker还是更好用一些，K3s也提供了使用Docker作为容器运行时的[安装方法](https://docs.k3s.io/zh/advanced#%E4%BD%BF%E7%94%A8-docker-%E4%BD%9C%E4%B8%BA%E5%AE%B9%E5%99%A8%E8%BF%90%E8%A1%8C%E6%97%B6)。所以在安装K3s前先安装一下Docker Engine，参考[官方文档](https://docs.docker.com/engine/install/)。  
+K3s包含并且默认[containerd](https://containerd.io/)作为容器运行时，但是就我的体验来说docker还是更好用一些，K3s也提供了使用Docker作为容器运行时的[安装方法](https://docs.k3s.io/zh/advanced#%E4%BD%BF%E7%94%A8-docker-%E4%BD%9C%E4%B8%BA%E5%AE%B9%E5%99%A8%E8%BF%90%E8%A1%8C%E6%97%B6)。所以在安装K3s前先安装一下Docker Engine，参考[官方文档](https://docs.docker.com/engine/install/)。  
 
-## 1.1 清理旧版本
+### 清理旧版本
 
 安装Docker前先卸载清理一下旧版本。不管过去有没有安装过docker，先执行下面的步骤清理一下准没错。  
 
@@ -40,7 +40,7 @@ $ sudo rm -rf /var/lib/docker
 $ sudo rm -rf /var/lib/containerd
 ```
 
-## 1.2 设置apt仓库
+### 设置apt仓库
 
 在一台新机器上直接使用`apt`安装docker，一般是找不到的。在安装之前先设置一下apt仓库。  
 
@@ -61,7 +61,7 @@ $ echo \
   sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
 ```
 
-## 1.3 安装Docker Engine
+### 安装Docker Engine
 
 完成上面的设置以后，就可以通过`apt`安装Docker Engine了。
 
@@ -69,7 +69,7 @@ $ echo \
 $ sudo apt-get install docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
 ```
 
-## 1.4 验证
+### 验证
 
 完成安装了以后，可以验证一下Docker Engine确实成功安装了。  
 
@@ -112,9 +112,9 @@ $ sudo docker rm {容器id}       # 删除容器
 $ sudo docker rmi hello-world   # 删除镜像
 ```
 
-# 2 K3s
+## K3s
 
-## 2.1 安装
+### 安装
 
 K3s的安装流程很简单，就一条命令。  
 
@@ -128,7 +128,7 @@ $ sudo curl -sfL https://get.k3s.io | sh -s - --docker    # 这里的docker就�
 $ sudo curl -sfL https://rancher-mirror.rancher.cn/k3s/k3s-install.sh | INSTALL_K3S_MIRROR=cn sh -s - --docker
 ```
 
-## 2.2 验证
+### 验证
 
 等安装完成以后，小等一会儿，验证一下安装成功。  
 
@@ -232,9 +232,9 @@ Deleted: sha256:5f70bf18a086007016e948b04aed3b82103a36bea41755b6cddfaf10ace3c6ef
 
 到此，以Docker为容器运行时的K3s就完成安装了。
 
-# Kuboard
+## Kuboard
 
-## 运行Kuboard服务
+### 运行Kuboard服务
 
 [Kuboard](https://kuboard.cn/)是类似于DashBoard的K8s多集群管理界面，但是他比DashBoard好用多了，K3s也是能用的。具体部署流程参考[文档](https://kuboard.cn/install/v3/install-built-in.html#%E9%83%A8%E7%BD%B2%E8%AE%A1%E5%88%92)。  
 
@@ -259,7 +259,7 @@ $ sudo chmod +x ./kuboard-install.sh
 $ sudo bash ./kuboard-install.sh
 ```
 
-## 导入集群
+### 导入集群
 
 等Kuboard容器运行起来了以后，就可以在浏览器通过`http://{外网ip}:10082`访问界面。  
 
@@ -271,7 +271,7 @@ $ sudo bash ./kuboard-install.sh
 
 点击添加集群，选择`.kubeconfig`方式连接。然后将`/etc/rancher/k3s/k3s.yaml`复制到配置文本框里。**注意，内容里有一行`server: https://127.0.0.1:6443`，填到Kuboard以后确认前把`127.0.0.1`修改为你的内网地址**。最后确认就完成集群导入了。
 
-# DockerHub配置
+## DockerHub配置
 
 登录到自己在DockerHub的私有仓库。
 
