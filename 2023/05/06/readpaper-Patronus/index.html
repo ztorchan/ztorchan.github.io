@@ -19,16 +19,16 @@
     <meta name="description" content="这篇文章发表于FAST&#39;23，是清华大学存储研究组提出的工作。文章介绍了他们基于RDMA并通过软件协同设计实现的高性能且有保护的远程内存。">
 <meta property="og:type" content="article">
 <meta property="og:title" content="论文阅读 | Patronus：High-Performance and Protective Remote Memory">
-<meta property="og:url" content="http://example.com/2023/05/06/readpaper-Patronus/index.html">
+<meta property="og:url" content="http://ztorchan.com/2023/05/06/readpaper-Patronus/index.html">
 <meta property="og:site_name" content="ZTorchan">
 <meta property="og:description" content="这篇文章发表于FAST&#39;23，是清华大学存储研究组提出的工作。文章介绍了他们基于RDMA并通过软件协同设计实现的高性能且有保护的远程内存。">
 <meta property="og:locale" content="zh_CN">
-<meta property="og:image" content="http://example.com/2023/05/06/readpaper-Patronus/Fig1-protection_releated_operations_latency.jpg">
-<meta property="og:image" content="http://example.com/2023/05/06/readpaper-Patronus/Table1-existing_solution.jpg">
-<meta property="og:image" content="http://example.com/2023/05/06/readpaper-Patronus/Table2-interface.jpg">
-<meta property="og:image" content="http://example.com/2023/05/06/readpaper-Patronus/Fig2-architecture.jpg">
-<meta property="og:image" content="http://example.com/2023/05/06/readpaper-Patronus/Fig3-format_of_32B_header.jpg">
-<meta property="og:image" content="http://example.com/2023/05/06/readpaper-Patronus/Fig4-handover.jpg">
+<meta property="og:image" content="http://ztorchan.com/2023/05/06/readpaper-Patronus/Fig1-protection_releated_operations_latency.jpg">
+<meta property="og:image" content="http://ztorchan.com/2023/05/06/readpaper-Patronus/Table1-existing_solution.jpg">
+<meta property="og:image" content="http://ztorchan.com/2023/05/06/readpaper-Patronus/Table2-interface.jpg">
+<meta property="og:image" content="http://ztorchan.com/2023/05/06/readpaper-Patronus/Fig2-architecture.jpg">
+<meta property="og:image" content="http://ztorchan.com/2023/05/06/readpaper-Patronus/Fig3-format_of_32B_header.jpg">
+<meta property="og:image" content="http://ztorchan.com/2023/05/06/readpaper-Patronus/Fig4-handover.jpg">
 <meta property="article:published_time" content="2023-05-06T11:59:46.000Z">
 <meta property="article:modified_time" content="2023-09-13T05:21:06.017Z">
 <meta property="article:author" content="ztorchan">
@@ -36,7 +36,7 @@
 <meta property="article:tag" content="RDMA">
 <meta property="article:tag" content="Remote Memory">
 <meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:image" content="http://example.com/2023/05/06/readpaper-Patronus/Fig1-protection_releated_operations_latency.jpg">
+<meta name="twitter:image" content="http://ztorchan.com/2023/05/06/readpaper-Patronus/Fig1-protection_releated_operations_latency.jpg">
   
   
     <meta name="referrer" content="no-referrer-when-downgrade">
@@ -80,7 +80,7 @@
   <script id="fluid-configs">
     var Fluid = window.Fluid || {};
     Fluid.ctx = Object.assign({}, Fluid.ctx)
-    var CONFIG = {"hostname":"example.com","root":"/","version":"1.9.4","typing":{"enable":true,"typeSpeed":50,"cursorChar":"_","loop":false,"scope":[]},"anchorjs":{"enable":true,"element":"h1,h2,h3,h4,h5,h6","placement":"left","visible":"hover","icon":""},"progressbar":{"enable":true,"height_px":3,"color":"#29d","options":{"showSpinner":false,"trickleSpeed":100}},"code_language":{"enable":true,"default":"TEXT"},"copy_btn":true,"image_caption":{"enable":true},"image_zoom":{"enable":true,"img_url_replace":["",""]},"toc":{"enable":true,"placement":"right","headingSelector":"h1,h2,h3,h4,h5,h6","collapseDepth":0},"lazyload":{"enable":true,"loading_img":"/img/loading.gif","onlypost":false,"offset_factor":2},"web_analytics":{"enable":true,"follow_dnt":false,"baidu":null,"google":null,"gtag":null,"tencent":{"sid":null,"cid":null},"woyaola":null,"cnzz":null,"leancloud":{"app_id":null,"app_key":null,"server_url":null,"path":"window.location.pathname","ignore_local":false}},"search_path":"/local-search.xml"};
+    var CONFIG = {"hostname":"ztorchan.com","root":"/","version":"1.9.4","typing":{"enable":true,"typeSpeed":50,"cursorChar":"_","loop":false,"scope":[]},"anchorjs":{"enable":true,"element":"h1,h2,h3,h4,h5,h6","placement":"left","visible":"hover","icon":""},"progressbar":{"enable":true,"height_px":3,"color":"#29d","options":{"showSpinner":false,"trickleSpeed":100}},"code_language":{"enable":true,"default":"TEXT"},"copy_btn":true,"image_caption":{"enable":true},"image_zoom":{"enable":true,"img_url_replace":["",""]},"toc":{"enable":true,"placement":"right","headingSelector":"h1,h2,h3,h4,h5,h6","collapseDepth":0},"lazyload":{"enable":true,"loading_img":"/img/loading.gif","onlypost":false,"offset_factor":2},"web_analytics":{"enable":true,"follow_dnt":false,"baidu":null,"google":null,"gtag":null,"tencent":{"sid":null,"cid":null},"woyaola":null,"cnzz":null,"leancloud":{"app_id":null,"app_key":null,"server_url":null,"path":"window.location.pathname","ignore_local":false}},"search_path":"/local-search.xml"};
 
     if (CONFIG.web_analytics.follow_dnt) {
       var dntVal = navigator.doNotTrack || window.doNotTrack || navigator.msDoNotTrack;
@@ -509,7 +509,7 @@ ABA问题可能会导致权限双重失效。具体而言，当过期的RPC尝�
   <div class="license-box my-3">
     <div class="license-title">
       <div>论文阅读 | Patronus：High-Performance and Protective Remote Memory</div>
-      <div>http://example.com/2023/05/06/readpaper-Patronus/</div>
+      <div>http://ztorchan.com/2023/05/06/readpaper-Patronus/</div>
     </div>
     <div class="license-meta">
       
