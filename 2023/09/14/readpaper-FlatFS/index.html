@@ -16,25 +16,34 @@
   <meta name="author" content="ztorchan">
   <meta name="keywords" content="">
   
-    <meta name="description" content="这篇文章记录一下在使用brpc的时候遇到的bug以及解决方案，长期更新。">
+    <meta name="description" content="文章工作主要由河海大学的水利部水利大数据国家重点实验室完成，发表于Fast&#39;22。这篇论文主要面向非易失性内存（NVM），针对现有文件系统的层次化命名空间性能低下且扩展性不佳的问题，提出了扁平化命名空间文件系统FlatFS。">
 <meta property="og:type" content="article">
-<meta property="og:title" content="使用brpc遇到的一些bug和解决方案">
-<meta property="og:url" content="http://ztorchan.com/2023/06/02/some-brpc-bugs-and-solutions/index.html">
+<meta property="og:title" content="论文阅读 | FlatFS：Flatten Hierarchical File System Namespace on Non-volatile Memories">
+<meta property="og:url" content="http://ztorchan.com/2023/09/14/readpaper-FlatFS/index.html">
 <meta property="og:site_name" content="ZTorchan">
-<meta property="og:description" content="这篇文章记录一下在使用brpc的时候遇到的bug以及解决方案，长期更新。">
+<meta property="og:description" content="文章工作主要由河海大学的水利部水利大数据国家重点实验室完成，发表于Fast&#39;22。这篇论文主要面向非易失性内存（NVM），针对现有文件系统的层次化命名空间性能低下且扩展性不佳的问题，提出了扁平化命名空间文件系统FlatFS。">
 <meta property="og:locale" content="zh_CN">
-<meta property="article:published_time" content="2023-06-02T07:22:11.000Z">
-<meta property="article:modified_time" content="2023-09-13T05:21:06.025Z">
+<meta property="og:image" content="http://ztorchan.com/2023/09/14/readpaper-FlatFS/Fig1-execution_time_breakdown.jpg">
+<meta property="og:image" content="http://ztorchan.com/2023/09/14/readpaper-FlatFS/Fig2-path_walk_scalability.jpg">
+<meta property="og:image" content="http://ztorchan.com/2023/09/14/readpaper-FlatFS/Table1-block_read_and_dentry_lookup_latency.jpg">
+<meta property="og:image" content="http://ztorchan.com/2023/09/14/readpaper-FlatFS/Fig3-directory_read_performance.jpg">
+<meta property="og:image" content="http://ztorchan.com/2023/09/14/readpaper-FlatFS/Fig4-architecture.jpg">
+<meta property="og:image" content="http://ztorchan.com/2023/09/14/readpaper-FlatFS/Fig5-coordinated_file_path_walk.jpg">
+<meta property="article:published_time" content="2023-09-14T10:15:02.000Z">
+<meta property="article:modified_time" content="2023-09-14T10:15:02.575Z">
 <meta property="article:author" content="ztorchan">
-<meta property="article:tag" content="brpc">
-<meta property="article:tag" content="bug">
+<meta property="article:tag" content="文件系统">
+<meta property="article:tag" content="论文阅读">
+<meta property="article:tag" content="文件系统命名空间">
+<meta property="article:tag" content="非易失性内存">
 <meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="http://ztorchan.com/2023/09/14/readpaper-FlatFS/Fig1-execution_time_breakdown.jpg">
   
   
     <meta name="referrer" content="no-referrer-when-downgrade">
   
   
-  <title>使用brpc遇到的一些bug和解决方案 - ZTorchan</title>
+  <title>论文阅读 | FlatFS：Flatten Hierarchical File System Namespace on Non-volatile Memories - ZTorchan</title>
 
   <link  rel="stylesheet" href="https://lib.baomitu.com/twitter-bootstrap/4.6.1/css/bootstrap.min.css" />
 
@@ -279,7 +288,7 @@
       <div class="banner-text text-center fade-in-up">
         <div class="h2">
           
-            <span id="subtitle" data-typed-text="使用brpc遇到的一些bug和解决方案"></span>
+            <span id="subtitle" data-typed-text="论文阅读 | FlatFS：Flatten Hierarchical File System Namespace on Non-volatile Memories"></span>
           
         </div>
 
@@ -290,8 +299,8 @@
     
       <span class="post-meta">
         <i class="iconfont icon-date-fill" aria-hidden="true"></i>
-        <time datetime="2023-06-02 15:22" pubdate>
-          2023年6月2日 下午
+        <time datetime="2023-09-14 18:15" pubdate>
+          2023年9月14日 晚上
         </time>
       </span>
     
@@ -302,7 +311,7 @@
       <span class="post-meta mr-2">
         <i class="iconfont icon-chart"></i>
         
-          2.4k 字
+          2.1k 字
         
       </span>
     
@@ -350,31 +359,43 @@
         <div id="board">
           <article class="post-content mx-auto">
             <!-- SEO header -->
-            <h1 style="display: none">使用brpc遇到的一些bug和解决方案</h1>
+            <h1 style="display: none">论文阅读 | FlatFS：Flatten Hierarchical File System Namespace on Non-volatile Memories</h1>
             
             
               <div class="markdown-body">
                 
-                <p>这篇文章记录一下在使用<a target="_blank" rel="noopener" href="https://github.com/apache/brpc/">brpc</a>的时候遇到的bug以及解决方案，长期更新。</p>
+                <p>文章工作主要由河海大学的水利部水利大数据国家重点实验室完成，发表于Fast'22。这篇论文主要面向非易失性内存（NVM），针对现有文件系统的层次化命名空间性能低下且扩展性不佳的问题，提出了扁平化命名空间文件系统FlatFS。</p>
 <span id="more"></span>
-<h2 id="流式rpc遇到pure-virtual-method-called错误">流式RPC遇到"pure virtual method called"错误</h2>
-<p><a target="_blank" rel="noopener" href="https://brpc.apache.org/zh/docs/client/streaming-rpc/">流式RPC</a>的使用需要继承<code>brpc::StreamInputHandler</code>，并且实现它的三个纯虚函数，如下：</p>
-<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><code class="hljs C++"><span class="hljs-keyword">class</span> <span class="hljs-title class_">StreamReciver</span> : <span class="hljs-keyword">public</span> brpc::StreamInputHandler &#123;<br><span class="hljs-keyword">public</span>:<br>  <span class="hljs-function"><span class="hljs-type">int</span> <span class="hljs-title">on_received_messages</span><span class="hljs-params">(brpc::StreamId id, </span></span><br><span class="hljs-params"><span class="hljs-function">                           butil::IOBuf *<span class="hljs-type">const</span> messages[], </span></span><br><span class="hljs-params"><span class="hljs-function">                           <span class="hljs-type">size_t</span> size)</span> </span>&#123;<br>    <span class="hljs-comment">// 当接收到消息时，调用该方法处理消息</span><br>  &#125;<br>  <span class="hljs-function"><span class="hljs-type">void</span> <span class="hljs-title">on_idle_timeout</span><span class="hljs-params">(brpc::StreamId id)</span> </span>&#123;<br>    <span class="hljs-comment">// 当超时未接收到消息时，调用该方法处理</span><br>  &#125;<br>  <span class="hljs-function"><span class="hljs-type">void</span> <span class="hljs-title">on_closed</span><span class="hljs-params">(brpc::StreamId id)</span> </span>&#123;<br>    <span class="hljs-comment">// 关闭stream以后，调用该方法处理</span><br>  &#125;<br>&#125;<br></code></pre></td></tr></table></figure>
-<p>在有些应用场景中，<code>StreamReceiver</code>可能并不长，在完成一次流式传输以后就立刻析构了，代码结构类似于：</p>
-<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br></pre></td><td class="code"><pre><code class="hljs C++"><span class="hljs-comment">/* 流式传输前 */</span><br><br>&#123;<br>  brpc::StreamId sd;<br>  brpc::StreamOptions stream_options;<br>  StreamReciver stream_recevier;      <span class="hljs-comment">// StreamReceiver实例化</span><br>  stream_options.handler = &amp;stream_recevier;<br>  <span class="hljs-keyword">if</span>(brpc::<span class="hljs-built_in">StreamCreate</span>(&amp;sd, cntl, &amp;stream_options) != <span class="hljs-number">0</span>) &#123; <br>    ... ... <span class="hljs-comment">// 错误处理</span><br>  &#125;<br>  stub-&gt;<span class="hljs-built_in">StreamMethod</span>(&amp;cntl, &amp;request, &amp;response, <span class="hljs-literal">NULL</span>);<br>  <br>  ...... <span class="hljs-comment">// 数据传输</span><br><br>  brpc::<span class="hljs-built_in">StreamClose</span>(sd);  <span class="hljs-comment">// 传输结束，关闭stream</span><br>&#125;<br><br><span class="hljs-comment">/*流式传输后*/</span><br></code></pre></td></tr></table></figure>
-<p>这样的代码结构里，<code>stream_recevier</code>的生命周期仅限于中括号内部，一旦运行退出中括号，它就被析构了。但是前面有说到<code>StreamReciver::on_closed</code>方法会在stream被关闭以后调用，而<code>brpc::StreamClose(sd)</code>不会等到<code>StreamReciver::on_close</code>被调用才返回。因此，有可能出现<code>stream_recevier</code>先被析构，而后<code>on_close</code>被调用的情况，此时虚函数表找到的就是<code>brpc::StreamInputHandler</code>这个基类的<code>on_close</code>了，是一个纯虚函数，从而引发了"pure virtual method called"的错误。</p>
-<h3 id="解决方案">解决方案</h3>
-<p>首先，理所当然的解决方案当然是避免这种代码结构，可以让<code>StreamReciver</code>作为brpc Service的成员变量，生命周期和服务一致。</p>
-<p>但是，有时候不可避免地会出现这种代码结构，例如不同的情况下需要构造不同的<code>StreamReciver</code>，在准备建立stream时才构造，完成传输后立刻销毁。我对于这种情况的对策是给<code>StreamReciver</code>加一个<code>close_</code>的成员变量，并在<code>on_close</code>方法内将其置为<code>true</code>。关闭stream以后，轮询<code>close_</code>，判断<code>on_close</code>方法是否已经被调用，确认被调用后再退出。具体如下：</p>
-<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><code class="hljs C++"><span class="hljs-keyword">class</span> <span class="hljs-title class_">StreamReciver</span> : <span class="hljs-keyword">public</span> brpc::StreamInputHandler &#123;<br><span class="hljs-keyword">public</span>:<br>  <span class="hljs-function"><span class="hljs-type">int</span> <span class="hljs-title">on_received_messages</span><span class="hljs-params">(brpc::StreamId id, </span></span><br><span class="hljs-params"><span class="hljs-function">                           butil::IOBuf *<span class="hljs-type">const</span> messages[], </span></span><br><span class="hljs-params"><span class="hljs-function">                           <span class="hljs-type">size_t</span> size)</span> </span>&#123;&#125;<br>  <span class="hljs-function"><span class="hljs-type">void</span> <span class="hljs-title">on_idle_timeout</span><span class="hljs-params">(brpc::StreamId id)</span> </span>&#123;&#125;<br>  <span class="hljs-function"><span class="hljs-type">void</span> <span class="hljs-title">on_closed</span><span class="hljs-params">(brpc::StreamId id)</span> </span>&#123; close_ = <span class="hljs-literal">true</span>; &#125;<br>  <span class="hljs-function"><span class="hljs-type">bool</span> <span class="hljs-title">is_close</span><span class="hljs-params">()</span> </span>&#123; <span class="hljs-keyword">return</span> close_; &#125;<br><br><span class="hljs-keyword">private</span>:<br>  <span class="hljs-type">bool</span> close_ = <span class="hljs-literal">false</span>;<br>&#125;<br></code></pre></td></tr></table></figure>
-<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><code class="hljs C++"><span class="hljs-comment">/* 流式传输前 */</span><br><br>&#123;<br>  ...... <br>  brpc::<span class="hljs-built_in">StreamClose</span>(sd); <span class="hljs-comment">// 关闭stream</span><br>  <span class="hljs-keyword">while</span>(!stream_recevier) &#123;<br>    std::this_thread::<span class="hljs-built_in">sleep_for</span>(std::chrono::<span class="hljs-built_in">milliseconds</span>(<span class="hljs-number">100</span>));<br>  &#125;<br>&#125;<br><br><span class="hljs-comment">/*流式传输后*/</span><br></code></pre></td></tr></table></figure>
-<p>这样就可以确保<code>on_close</code>方法在<code>stream_recevier</code>被析构前得到调用，避免纯虚函数调用错误。</p>
-<h2 id="流式rpc遇到fail-to-parse-response-from-xxxxxxxx-by-streaming_rpc-at-client-side错误">流式RPC遇到"Fail to parse response from xxxx:xxxx by streaming_rpc at client-side"错误</h2>
-<p>这个问题在brpc的<a target="_blank" rel="noopener" href="https://github.com/apache/brpc/issues/392">issue#392</a>有被讨论到，具体原因不明，可能是普通RPC和流式RPC混用同一个连接导致的。</p>
-<h3 id="解决方案-1">解决方案</h3>
-<p>目前的解决方案是客户端创建<code>brpc::Channel</code>时，将<code>brpc::ChannelOptions</code>的<code>connection_type</code>设置为<code>"pooled"</code>，如下：</p>
-<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><code class="hljs C++">brpc::Channel channel;<br>brpc::ChannelOptions options;<br>options.connection_type = <span class="hljs-string">&quot;pooled&quot;</span>;<br><span class="hljs-keyword">if</span>(channel.<span class="hljs-built_in">Init</span>(server_ep, &amp;options) != <span class="hljs-number">0</span>) &#123;<br>  <span class="hljs-comment">// 错误处理</span><br>&#125;<br></code></pre></td></tr></table></figure>
-<p>按照这样修改代码后，暂时没遇到错误了，但是不确保是不是真的解决了问题。</p>
+<p><em>Paper Link</em>：<a target="_blank" rel="noopener" href="https://www.usenix.org/conference/atc22/presentation/cai">https://www.usenix.org/conference/atc22/presentation/cai</a></p>
+<h1 id="背景和动机">背景和动机</h1>
+<p>NVM以DRAM相当数量级的性能，具备了可按字节寻址和可持久化存储的能力，吸引了很多学者在其上做文章，不乏面向NVM的文件系统设计。但无论是大规模使用的Ext4、XFS文件系统，还是学界为NVM提出的PMFS、NOVA等文件系统，都是采用的层次化的树形结构组织文件系统命名空间。Linux的虚拟文件系统（VFS）也统一所有挂载的文件系统，维护了一个全局目录树视图。层次化的结构清晰明了，固然是对用户友好的，但也不免存在缺陷：</p>
+<p><img src="Fig1-execution_time_breakdown.jpg" srcset="/img/loading.gif" lazyload alt="图1 NOVA文件系统下六层路径元数据调用耗时分析" /><br />
+<img src="Fig2-path_walk_scalability.jpg" srcset="/img/loading.gif" lazyload alt="图2 NVM下各文件系统stat调用的延迟随路径深度变化（Other Operation指的是除路径解析以外的操作）" /><br />
+<img src="Table1-block_read_and_dentry_lookup_latency.jpg" srcset="/img/loading.gif" lazyload alt="表1 Ext4和XFS在SSD和NVM下数据块访问和路径解析的延迟占比" /></p>
+<p><strong><em>低效的文件路径解析</em></strong>：目录树结构下，文件路径的解析要逐级查找。对路径上的每一层，都要进行目录项搜索以及权限检查等耗时的操作。路径解析的开销还是线性增长的，假设一个文件路径包含了<span class="math inline">\(n\)</span>层，那在真正找到最后的文件前要对前面的<span class="math inline">\(n-1\)</span>层进行解析。因此存在扩展性受限的问题。相比于SSD或HDD，路径解析的开销在NVM上表现得尤为明显（硬件性能的提升使得瓶颈转移到软件栈上），这一点可以从看出来图1、图2和表1看出来。</p>
+<figure>
+<img src="Fig3-directory_read_performance.jpg" srcset="/img/loading.gif" lazyload alt="图3 NVM顺序遍历和随机遍历延迟" /><figcaption>图3 NVM顺序遍历和随机遍历延迟</figcaption>
+</figure>
+<p><strong><em>命名空间遍历开销巨大</em></strong>：文件系统使用有许多涉及到命名空间遍历的操作，例如<code>find</code>、<code>rm -r</code>和<code>ls -R</code>。Otpane NVM的顺序访问和随机访问性能存在2.3~3.5倍的差距，访问延迟和带宽都对访问模式非常敏感。对传统目录树遍历会引入大量的间接访问和随机访问，从而导致遍历延迟极高。图3分别将1024个文件放置在1层深的目录树和11层深的目录树，并使用<code>ls -R</code>指令，模拟顺序访问遍历和随机访问遍历，结果延迟相差了4.08倍。</p>
+<h1 id="系统设计">系统设计</h1>
+<figure>
+<img src="Fig4-architecture.jpg" srcset="/img/loading.gif" lazyload alt="图4 FlatFS架构" /><figcaption>图4 FlatFS架构</figcaption>
+</figure>
+<p>Linux对众多文件系统是通过VFS层进行统一管理的，而VFS又是以目录树对命名空间进行组织，所以要想在Linux实现一个扁平化的内核文件系统，对VFS的改造也是必须的，否则VFS在访问扁平文件系统时还是会按照树形结构的路径解析方式逐级解析。因此文章工作除了实现FlatFS本身，还为VFS层添加了了一个协同路径解析模块（Coordinated Path Walk）。</p>
+<h2 id="协同路径解析">协同路径解析</h2>
+<figure>
+<img src="Fig5-coordinated_file_path_walk.jpg" srcset="/img/loading.gif" lazyload alt="图5 协同路径解析" /><figcaption>图5 协同路径解析</figcaption>
+</figure>
+<p>在FlatFS注册进内核以后，VFS要同时管理树形文件系统和扁平文件系统两类文件系统，各自路径的解析方式不一。简单的来说，协同路径解析的作用就是在树形文件系统挂载路径就按照传统的逐级解析方式（<strong><em>Component-at-a-time</em></strong>，一次解析一级），而当解析FlatFS下的路径时就切换到它独有的全路径解析方式（<strong><em>Full-path-at-a-time</em></strong>，一次解析一个全路径）。我们只要关注文章对后者的设计就好了，过程分为以下几个部分。</p>
+<h3 id="pathname-analyzer">Pathname Analyzer</h3>
+<p><strong><code>/mnt/flatfs/src/./link/a/..///file</code></strong> =&gt; <strong><code>/mnt/flatfs/src/link/a/../file</code></strong></p>
+<p>第一步是经过Pathname Analyzer的处理，在这里会将文件路径的<code>.</code>和多余的<code>/</code>直接去除。</p>
+<h3 id="semantic-path-component-finder">Semantic Path Component Finder</h3>
+<p><strong><code>/mnt/flatfs/src/link/a/../file</code></strong> + <strong><code>symbol link：link -&gt; data/x</code></strong> =&gt; <strong><code>/mnt/flatfs/src/data/x/a/../file</code></strong></p>
+<p>在这里，会对文件路径中的软链接和挂载点做处理。处理过程使用了后面会提到的<span class="math inline">\(B^{r}\)</span>树。对于软链接<code>path</code>，FlatFS都会为其在<span class="math inline">\(B^{r}\)</span>树中创建一个特殊的记录<code>path/\xFE</code>。例如，有一个路径<code>/a/b/link/c</code>，其中<code>link</code>是软链接，那么FlatFS就会在<span class="math inline">\(B^{r}\)</span>树中创建一条记录<code>/a/b/link/\xFE</code>。向<span class="math inline">\(B^{r}\)</span>树查找<code>/a/b/link/c</code>路径时，由于该路径不实际存在，会返回第一个比它大的值<code>/a/b/link/\xFE</code>，那么久说明该路径存在有软链接，那么就会进行软链接路径的替换处理。</p>
+<p>但到目前，仍然还有一个问题没有解决。对于形如<code>/a/symlink/../b</code>的路径，如果直接将<code>/symlink/..</code>移除可能会导致错误的路径解析。为此FlatFS提出了两种解决方案，在安装时根据需要选择。第一，如果能保证文件路径都符合<strong>Plan 9 lexical</strong>规范（我也不太懂），那么可以直接移除，不会出错的；第二，如果无法保证，FlatFS则会在遇到软链接时，对软链接解析替换，然后回退到Pathname Analyzer步骤，再对<code>..</code>做移除处理。</p>
+<h3 id="prefix-permission-checker">Prefix Permission Checker</h3>
+<p>传统的树形文件系统，路径解析过程中需要对每一层都进行权限检查。如果在扁平文件系统也这么做的话，那效率会受到极大的影响。FlatFS则使用了前缀</p>
 
                 
               </div>
@@ -393,7 +414,7 @@
     
       <span class="category-chain">
         
-  <a href="/categories/%E6%9D%82%E8%B4%A7/" class="category-chain-item">杂货</a>
+  <a href="/categories/%E8%AE%BA%E6%96%87%E9%98%85%E8%AF%BB/" class="category-chain-item">论文阅读</a>
   
   
 
@@ -408,9 +429,13 @@
     <div class="post-meta">
       <i class="iconfont icon-tags"></i>
       
-        <a href="/tags/brpc/">#brpc</a>
+        <a href="/tags/%E6%96%87%E4%BB%B6%E7%B3%BB%E7%BB%9F/">#文件系统</a>
       
-        <a href="/tags/bug/">#bug</a>
+        <a href="/tags/%E8%AE%BA%E6%96%87%E9%98%85%E8%AF%BB/">#论文阅读</a>
+      
+        <a href="/tags/%E6%96%87%E4%BB%B6%E7%B3%BB%E7%BB%9F%E5%91%BD%E5%90%8D%E7%A9%BA%E9%97%B4/">#文件系统命名空间</a>
+      
+        <a href="/tags/%E9%9D%9E%E6%98%93%E5%A4%B1%E6%80%A7%E5%86%85%E5%AD%98/">#非易失性内存</a>
       
     </div>
   
@@ -422,8 +447,8 @@
 
   <div class="license-box my-3">
     <div class="license-title">
-      <div>使用brpc遇到的一些bug和解决方案</div>
-      <div>http://ztorchan.com/2023/06/02/some-brpc-bugs-and-solutions/</div>
+      <div>论文阅读 | FlatFS：Flatten Hierarchical File System Namespace on Non-volatile Memories</div>
+      <div>http://ztorchan.com/2023/09/14/readpaper-FlatFS/</div>
     </div>
     <div class="license-meta">
       
@@ -435,7 +460,7 @@
       
         <div class="license-meta-item license-meta-date">
           <div>发布于</div>
-          <div>2023年6月2日</div>
+          <div>2023年9月14日</div>
         </div>
       
       
@@ -467,18 +492,12 @@
                   <article class="post-prev col-6">
                     
                     
-                      <a href="/2023/09/14/readpaper-FlatFS/" title="论文阅读 | FlatFS：Flatten Hierarchical File System Namespace on Non-volatile Memories">
-                        <i class="iconfont icon-arrowleft"></i>
-                        <span class="hidden-mobile">论文阅读 | FlatFS：Flatten Hierarchical File System Namespace on Non-volatile Memories</span>
-                        <span class="visible-mobile">上一篇</span>
-                      </a>
-                    
                   </article>
                   <article class="post-next col-6">
                     
                     
-                      <a href="/2023/05/07/single-node-k3s-install/" title="单机部署K3s">
-                        <span class="hidden-mobile">单机部署K3s</span>
+                      <a href="/2023/06/02/some-brpc-bugs-and-solutions/" title="使用brpc遇到的一些bug和解决方案">
+                        <span class="hidden-mobile">使用brpc遇到的一些bug和解决方案</span>
                         <span class="visible-mobile">下一篇</span>
                         <i class="iconfont icon-arrowright"></i>
                       </a>
