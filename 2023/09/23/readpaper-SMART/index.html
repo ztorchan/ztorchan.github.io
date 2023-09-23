@@ -24,8 +24,9 @@
 <meta property="og:description" content="文章提出了一个适用于分离式内存架构的基数树。主要工作由复旦大学和华为云完成，发表于OSDI&#39;23。">
 <meta property="og:locale" content="zh_CN">
 <meta property="og:image" content="http://ztorchan.com/2023/09/23/readpaper-SMART/fig1-read_performances_of_Sherman_and_ART.jpg">
+<meta property="og:image" content="http://ztorchan.com/2023/09/23/readpaper-SMART/fig2-data_structure_of_smart.JPG">
 <meta property="article:published_time" content="2023-09-23T11:09:00.000Z">
-<meta property="article:modified_time" content="2023-09-23T13:02:50.865Z">
+<meta property="article:modified_time" content="2023-09-23T15:22:19.471Z">
 <meta property="article:author" content="ztorchan">
 <meta property="article:tag" content="论文阅读">
 <meta property="article:tag" content="分离式内存">
@@ -378,7 +379,15 @@
 <li><p><strong>ART的结构特征加剧了计算端缓存失效问题</strong>。路径压缩和适应性节点（根据需要修改节点内指针数组长度）是ART降低内存开销重要的结构特征。但这就会引入ART内部节点父子关系的变化或节点类型变化等等问题，进而引入计算端缓存失效的可能性。如果没有合适的判别机制，可能会导致错误的数据访问。</p></li>
 </ul>
 <p>本文就针对前面提出的三点挑战，进行了针对性设计，提出了SMART，一个面向DM架构的高性能ART。</p>
-<h1 id="smart整体设计">SMART整体设计</h1>
+<h1 id="smart">SMART</h1>
+<p>SMART针对三点挑战，分别提出了三个设计来解决问题。</p>
+<h2 id="层次化的art并发控制">层次化的ART并发控制</h2>
+<figure>
+<img src="fig2-data_structure_of_smart.JPG" srcset="/img/loading.gif" lazyload alt="图2 SMART的内部节点和叶子节点" /><figcaption>图2 SMART的内部节点和叶子节点</figcaption>
+</figure>
+<p>首先来看看SMART的内部节点和叶子节点结构。</p>
+<h2 id="读委托写合并">读委托写合并</h2>
+<h2 id="art缓存">ART缓存</h2>
 
                 
               </div>
