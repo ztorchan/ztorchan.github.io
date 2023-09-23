@@ -25,7 +25,7 @@
 <meta property="og:locale" content="zh_CN">
 <meta property="og:image" content="http://ztorchan.com/2023/09/23/readpaper-SMART/fig1-read_performances_of_Sherman_and_ART.jpg">
 <meta property="article:published_time" content="2023-09-23T11:09:00.000Z">
-<meta property="article:modified_time" content="2023-09-23T13:01:11.716Z">
+<meta property="article:modified_time" content="2023-09-23T13:02:50.865Z">
 <meta property="article:author" content="ztorchan">
 <meta property="article:tag" content="论文阅读">
 <meta property="article:tag" content="分离式内存">
@@ -373,10 +373,10 @@
 </ul>
 <p>基于这两个观察，文章就得出一个结论：<strong>比起B+树，基数树更适合用于DM架构</strong>。当然ART也不是完美的，要想将ART适配于DM架构，仍然有三个问题需要解决：</p>
 <ul>
-<li><strong>有锁并发控制导致写性能低下</strong>。现有的ART都使用了有锁并发控制来实现同步。但是在DM架构上，锁操作开销是很大的，每一次锁操作都是一次网络往返（RDMA_CAS）。而且，忙等待之类的锁冲突机制还会在上锁失败时不断重试，进一步加剧RNIC的IOPS浪费。一个可能的解决方案是设计无锁算法。但是无锁算法依赖于out-of-place的更新模式（只更新8字节地址保证更新的原子性）。但是这种更新模式又会导致计算节点本地缓存的频繁失效，造成缓存抖动问题。</li>
+<li><p><strong>有锁并发控制导致写性能低下</strong>。现有的ART都使用了有锁并发控制来实现同步。但是在DM架构上，锁操作开销是很大的，每一次锁操作都是一次网络往返（RDMA_CAS）。而且，忙等待之类的锁冲突机制还会在上锁失败时不断重试，进一步加剧RNIC的IOPS浪费。一个可能的解决方案是设计无锁算法。但是无锁算法依赖于out-of-place的更新模式（只更新8字节地址保证更新的原子性）。但是这种更新模式又会导致计算节点本地缓存的频繁失效，造成缓存抖动问题。</p></li>
+<li><p><strong>同节点客户端的重复I/O浪费RNIC的IOPS</strong>。前面有提到，ART能够突破B+树受到的带宽限制，但依然受限于RNIC的IOPS。IOPS吃紧的情况下，还是有浪费的情况。比如说，位于同一个计算节点的多个客户端，要读内存池的同一个KV对，每个客户端都会发起一个网络I/O，这种不必要的重复I/O就是对IOPS的严重浪费了。写也是同理。</p></li>
+<li><p><strong>ART的结构特征加剧了计算端缓存失效问题</strong>。路径压缩和适应性节点（根据需要修改节点内指针数组长度）是ART降低内存开销重要的结构特征。但这就会引入ART内部节点父子关系的变化或节点类型变化等等问题，进而引入计算端缓存失效的可能性。如果没有合适的判别机制，可能会导致错误的数据访问。</p></li>
 </ul>
-<p>-<strong>同节点客户端的重复I/O浪费RNIC的IOPS</strong>。前面有提到，ART能够突破B+树受到的带宽限制，但依然受限于RNIC的IOPS。IOPS吃紧的情况下，还是有浪费的情况。比如说，位于同一个计算节点的多个客户端，要读内存池的同一个KV对，每个客户端都会发起一个网络I/O，这种不必要的重复I/O就是对IOPS的严重浪费了。写也是同理。</p>
-<p>-<strong>ART的结构特征加剧了计算端缓存失效问题</strong>。路径压缩和适应性节点（根据需要修改节点内指针数组长度）是ART降低内存开销重要的结构特征。但这就会引入ART内部节点父子关系的变化或节点类型变化等等问题，进而引入计算端缓存失效的可能性。如果没有合适的判别机制，可能会导致错误的数据访问。</p>
 <p>本文就针对前面提出的三点挑战，进行了针对性设计，提出了SMART，一个面向DM架构的高性能ART。</p>
 <h1 id="smart整体设计">SMART整体设计</h1>
 
