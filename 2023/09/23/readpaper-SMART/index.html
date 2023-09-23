@@ -23,15 +23,15 @@
 <meta property="og:site_name" content="ZTorchan">
 <meta property="og:description" content="文章提出了一个适用于分离式内存架构的基数树。主要工作由复旦大学和华为云完成，发表于OSDI&#39;23。">
 <meta property="og:locale" content="zh_CN">
-<meta property="og:image" content="http://ztorchan.com/2023/09/23/readpaper-SMART/Fig1-execution_time_breakdown.jpg">
+<meta property="og:image" content="http://ztorchan.com/2023/09/23/readpaper-SMART/fig1-read_performances_of_Sherman_and_ART.jpg">
 <meta property="article:published_time" content="2023-09-23T11:09:00.000Z">
-<meta property="article:modified_time" content="2023-09-23T12:59:18.660Z">
+<meta property="article:modified_time" content="2023-09-23T13:01:11.716Z">
 <meta property="article:author" content="ztorchan">
 <meta property="article:tag" content="论文阅读">
 <meta property="article:tag" content="分离式内存">
 <meta property="article:tag" content="基数树">
 <meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:image" content="http://ztorchan.com/2023/09/23/readpaper-SMART/Fig1-execution_time_breakdown.jpg">
+<meta name="twitter:image" content="http://ztorchan.com/2023/09/23/readpaper-SMART/fig1-read_performances_of_Sherman_and_ART.jpg">
   
   
     <meta name="referrer" content="no-referrer-when-downgrade">
@@ -365,7 +365,7 @@
 <p>分离式内存（Disaggregated Memory，DM）最近几年发展得如火如荼，先前已经有不少研究探讨DM上的索引结构了。B+树作为使用最广的索引结构，自然已经有人研究过怎么将它适配于DM，比如说<a target="_blank" rel="noopener" href="https://dl.acm.org/doi/abs/10.1145/3514221.3517824">Sherman</a>。</p>
 <p>但是B+树也有它的问题：<strong>读写放大</strong>。这一点主要体现在对叶子节点的读写上，B+树的每个叶子节点保存了多个Key-Value（KV）对，运行在计算节点上的进程要搜索某一个Key时，得把整个叶子节点都读回来。假设一个叶子节点包含了32个KV对，那就有32倍的读放大。写放大也是一样的道理。尽管Sherman对B+树的写做了优化，解决了写放大问题，但读放大问题依然存在。读写放大问题在DM架构上的影响还是非常明显的，毕竟浪费的是网络带宽。文章就做了些实验比较Sherman和<a target="_blank" rel="noopener" href="https://ieeexplore.ieee.org/document/6544812">ART</a>（SOTA基数树），总结了两个结论：</p>
 <figure>
-<img src="Fig1-execution_time_breakdown.jpg" srcset="/img/loading.gif" lazyload alt="图1 Sherman和ART在YCSB" /><figcaption>图1 Sherman和ART在YCSB</figcaption>
+<img src="fig1-read_performances_of_Sherman_and_ART.jpg" srcset="/img/loading.gif" lazyload alt="图1 Sherman和ART在YCSB" /><figcaption>图1 Sherman和ART在YCSB</figcaption>
 </figure>
 <ul>
 <li><p><strong>B+树的吞吐量受到了带宽的限制</strong>。这一点可以很容易从图1的(a)和(b)看出来，随着客户端数量上升，Sherman的吞吐量首先达到上限，ART的吞吐量上限是Sherman的两倍还多。而且单个叶子节点存放的KV对越多，Sherman的吞吐量越低。可能大伙觉得，多读回来的数据可以作为缓存啊，这不就把读放大问题完美解决。但是实验(c)显示，即使给到了600MB的缓存，吞吐量依然受限于网络带宽无法继续提升（文章没有做解释）。相反，ART的吞吐上限受制于RNIC的IOPS，比Sherman好很多。</p></li>
