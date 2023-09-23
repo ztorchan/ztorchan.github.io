@@ -26,7 +26,7 @@
 <meta property="og:image" content="http://ztorchan.com/2023/09/23/readpaper-SMART/fig1-read_performances_of_Sherman_and_ART.jpg">
 <meta property="og:image" content="http://ztorchan.com/2023/09/23/readpaper-SMART/fig2-data_structure_of_smart.JPG">
 <meta property="article:published_time" content="2023-09-23T11:09:00.000Z">
-<meta property="article:modified_time" content="2023-09-23T15:59:50.470Z">
+<meta property="article:modified_time" content="2023-09-23T16:03:13.956Z">
 <meta property="article:author" content="ztorchan">
 <meta property="article:tag" content="论文阅读">
 <meta property="article:tag" content="分离式内存">
@@ -386,7 +386,7 @@
 <img src="fig2-data_structure_of_smart.JPG" srcset="/img/loading.gif" lazyload alt="图2 SMART的内部节点和叶子节点" /><figcaption>图2 SMART的内部节点和叶子节点</figcaption>
 </figure>
 <p>SMART的节点被分为内部节点（Internal Node）和叶子节点（Leaf Node）两种。</p>
-<p>内部节点主要由三个部分组成。第一部分是Reverse Pointer，这里存储指向父节点的指针；第二部分是Header，存放了当前节点深度Depth、节点类型<span class="math inline">\(Type_{node}\)</span>（NODE_4/NODE_16/NODE_64/NODE_256）、压缩的Partial Key数组和当前数组大小<span class="math inline">\(Size_{array}\)</span>;第三部分就是Slot数组，保存了子节点的信息，每个Slot由对应Partial Key、是否为叶子节点的标记位Leaf、子节点类型<span class="math inline">\(Type_{node}\)</span>（若为内部节点）或子节点长度（若为叶子节点），以及48位地址组成。</p>
+<p>内部节点主要由三个部分组成。第一部分是Reverse Pointer，这里存储指向父节点的指针；第二部分是Header，存放了当前节点深度Depth、节点类型Type<sub>node</sub>（NODE_4/NODE_16/NODE_64/NODE_256）、压缩的Partial Key数组和当前数组大小Size<sub>array</sub>;第三部分就是Slot数组，保存了子节点的信息，每个Slot由对应Partial Key、是否为叶子节点的标记位Leaf、子节点类型Type<sub>node</sub>（若为内部节点）或子节点长度（若为叶子节点），以及48位地址组成。</p>
 <p>叶子节点也由若干部分构成，包括指向父节点的Reverse Pointer，用于标记KV是否被删除的有效位Valid，校验和Checksum，固定长度的KV对，以及在尾部的锁。</p>
 <h2 id="读委托写合并">读委托写合并</h2>
 <h2 id="art缓存">ART缓存</h2>
