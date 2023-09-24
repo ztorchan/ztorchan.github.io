@@ -26,8 +26,9 @@
 <meta property="og:image" content="http://ztorchan.com/2023/09/23/readpaper-SMART/fig1-read_performances_of_Sherman_and_ART.jpg">
 <meta property="og:image" content="http://ztorchan.com/2023/09/23/readpaper-SMART/fig2-data_structure_of_smart.JPG">
 <meta property="og:image" content="http://ztorchan.com/2023/09/23/readpaper-SMART/fig3-operations.jpg">
+<meta property="og:image" content="http://ztorchan.com/2023/09/23/readpaper-SMART/fig4-read_delegation.jpg">
 <meta property="article:published_time" content="2023-09-23T11:09:00.000Z">
-<meta property="article:modified_time" content="2023-09-24T08:11:55.020Z">
+<meta property="article:modified_time" content="2023-09-24T09:09:16.460Z">
 <meta property="article:author" content="ztorchan">
 <meta property="article:tag" content="论文阅读">
 <meta property="article:tag" content="分离式内存">
@@ -307,7 +308,7 @@
       <span class="post-meta mr-2">
         <i class="iconfont icon-chart"></i>
         
-          2.3k 字
+          2.7k 字
         
       </span>
     
@@ -395,6 +396,11 @@
 <img src="fig3-operations.jpg" srcset="/img/loading.gif" lazyload alt="图3 SMART的一系列操作变化过程" /><figcaption>图3 SMART的一系列操作变化过程</figcaption>
 </figure>
 <h2 id="读委托写合并">读委托写合并</h2>
+<p>这个机制用于解决同一计算节点上不同客户端对相同Key重复读的I/O浪费问题。</p>
+<figure>
+<img src="fig4-read_delegation.jpg" srcset="/img/loading.gif" lazyload alt="图4 读委托" /><figcaption>图4 读委托</figcaption>
+</figure>
+<p>SMART客户端在读时会对Key计算一个哈希值，并且在尝试在本地对这个哈希值上锁，成功上锁的客户端就会开始执行正常的RDMA读流程。如果上锁失败，则说明这个哈希值已经被其它客户端上锁了，这时候就会去比较被上锁的Key（也就是正在执行读的Key）究竟是不是同一个Key。如果不是同一个Key，那客户端就会直接进入正常的读流程，从内存池读回目标KV对；如果是同一个Key，那客户端就不会去内存池读，而是进入一个等待队列。持有锁的客户端在读回目标KV后，会将它分享给等待队列中的每一个客户端，从而就可以通过一次网络I/O完成多个读操作。</p>
 <h2 id="art缓存">ART缓存</h2>
 
                 
