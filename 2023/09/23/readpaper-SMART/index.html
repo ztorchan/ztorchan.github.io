@@ -25,8 +25,9 @@
 <meta property="og:locale" content="zh_CN">
 <meta property="og:image" content="http://ztorchan.com/2023/09/23/readpaper-SMART/fig1-read_performances_of_Sherman_and_ART.jpg">
 <meta property="og:image" content="http://ztorchan.com/2023/09/23/readpaper-SMART/fig2-data_structure_of_smart.JPG">
+<meta property="og:image" content="http://ztorchan.com/2023/09/23/readpaper-SMART/fig3-operations.jpg">
 <meta property="article:published_time" content="2023-09-23T11:09:00.000Z">
-<meta property="article:modified_time" content="2023-09-23T16:05:31.489Z">
+<meta property="article:modified_time" content="2023-09-24T08:11:55.020Z">
 <meta property="article:author" content="ztorchan">
 <meta property="article:tag" content="论文阅读">
 <meta property="article:tag" content="分离式内存">
@@ -306,7 +307,7 @@
       <span class="post-meta mr-2">
         <i class="iconfont icon-chart"></i>
         
-          2k 字
+          2.3k 字
         
       </span>
     
@@ -385,9 +386,14 @@
 <figure>
 <img src="fig2-data_structure_of_smart.JPG" srcset="/img/loading.gif" lazyload alt="图2 SMART的内部节点和叶子节点" /><figcaption>图2 SMART的内部节点和叶子节点</figcaption>
 </figure>
-<p>SMART的节点被分为内部节点（Internal Node）和叶子节点（Leaf Node）两种。</p>
+<p>SMART的节点被分为<strong>内部节点（Internal Node）</strong>和<strong>叶子节点（Leaf Node）</strong>两种。所谓层次化的并发控制，意思就是内部节点采用无锁并发，而叶子节点采用有锁并发。</p>
 <p>内部节点主要由三个部分组成。第一部分是Reverse Pointer，这里存储指向父节点的指针；第二部分是Header，存放了当前节点深度Depth、节点类型Type<sub>node</sub>（NODE_4/NODE_16/NODE_64/NODE_256）、压缩的Partial Key数组和当前数组大小Size<sub>array</sub>；第三部分就是Slot数组，保存了子节点的信息，每个Slot由对应Partial Key、是否为叶子节点的标记位Leaf、子节点类型Type<sub>node</sub>（若为内部节点）或子节点长度（若为叶子节点），以及48位地址组成。</p>
 <p>叶子节点也由若干部分构成，包括指向父节点的Reverse Pointer，用于标记KV是否被删除的有效位Valid，校验和Checksum，固定长度的KV对，以及在尾部的锁Lock。</p>
+<p>发现了么？SMART把内部节点的每一部分都设计为了8字节大小，这样就可以直接使用RDMA CAS操作直接原子地进行修改了，不用上锁。而对于叶子节点，仍然采用了锁机制。写者之间会直接用互斥锁进行同步，在写之前进行上锁；读者则采用乐观策略，将节点内容读回后通过校验和检查内容是否一致，不一致则重新读。此外，可以看到SMART将锁放置在了叶子节点的尾部，这样客户端就可以在写回数据的时候顺便释放锁了，因为RDMA保证了写的顺序性，释放锁时前面的数据一定已经完成修改了。</p>
+<p>为了更好地展示SMART的各种操作，文章用图展示了对一颗ART树进行一系列操作的变换过程：</p>
+<figure>
+<img src="fig3-operations.jpg" srcset="/img/loading.gif" lazyload alt="图3 SMART的一系列操作变化过程" /><figcaption>图3 SMART的一系列操作变化过程</figcaption>
+</figure>
 <h2 id="读委托写合并">读委托写合并</h2>
 <h2 id="art缓存">ART缓存</h2>
 
