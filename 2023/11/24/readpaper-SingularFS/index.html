@@ -16,33 +16,33 @@
   <meta name="author" content="ztorchan">
   <meta name="keywords" content="">
   
-    <meta name="description" content="文章提出了一个适用于分离式内存架构的基数树。主要工作由复旦大学和华为云完成，发表于OSDI&#39;23。">
+    <meta name="description" content="这篇文章出自清华大学存储研究组（舒继武团队），探讨了可承载Billion级别分布式文件系统的元数据服务构建。文章发表在了ATC&#96;23。">
 <meta property="og:type" content="article">
-<meta property="og:title" content="论文阅读 | SMART：A High-Performance Adaptive Radix Tree for Disaggregated Memory">
-<meta property="og:url" content="http://ztorchan.com/2023/09/23/readpaper-SMART/index.html">
+<meta property="og:title" content="论文阅读 | SingularFS：A Billion-Scale Distributed File System Using a Single Metadata Server">
+<meta property="og:url" content="http://ztorchan.com/2023/11/24/readpaper-SingularFS/index.html">
 <meta property="og:site_name" content="ZTorchan">
-<meta property="og:description" content="文章提出了一个适用于分离式内存架构的基数树。主要工作由复旦大学和华为云完成，发表于OSDI&#39;23。">
+<meta property="og:description" content="这篇文章出自清华大学存储研究组（舒继武团队），探讨了可承载Billion级别分布式文件系统的元数据服务构建。文章发表在了ATC&#96;23。">
 <meta property="og:locale" content="zh_CN">
-<meta property="og:image" content="http://ztorchan.com/2023/09/23/readpaper-SMART/fig1-read_performances_of_Sherman_and_ART.jpg">
-<meta property="og:image" content="http://ztorchan.com/2023/09/23/readpaper-SMART/fig2-data_structure_of_smart.JPG">
-<meta property="og:image" content="http://ztorchan.com/2023/09/23/readpaper-SMART/fig3-operations.jpg">
-<meta property="og:image" content="http://ztorchan.com/2023/09/23/readpaper-SMART/fig4-read_delegation.jpg">
-<meta property="og:image" content="http://ztorchan.com/2023/09/23/readpaper-SMART/fig5-write_combining.jpg">
-<meta property="og:image" content="http://ztorchan.com/2023/09/23/readpaper-SMART/fig6-art_cache.jpg">
-<meta property="article:published_time" content="2023-09-23T11:09:00.000Z">
-<meta property="article:modified_time" content="2023-09-24T11:18:35.402Z">
+<meta property="og:image" content="http://ztorchan.com/2023/11/24/readpaper-SingularFS/fig1-existing_fs_analysis.jpg">
+<meta property="og:image" content="http://ztorchan.com/2023/11/24/readpaper-SingularFS/fig2-architecture.jpg">
+<meta property="og:image" content="http://ztorchan.com/2023/11/24/readpaper-SingularFS/fig3-md_in_kvstore.jpg">
+<meta property="og:image" content="http://ztorchan.com/2023/11/24/readpaper-SingularFS/fig4-metadata_classification.jpg">
+<meta property="og:image" content="http://ztorchan.com/2023/11/24/readpaper-SingularFS/fig5-crash_consistency_of_double_node.jpg">
+<meta property="og:image" content="http://ztorchan.com/2023/11/24/readpaper-SingularFS/fig6-hierarchical_concurrency_control_algorithm.jpg">
+<meta property="article:published_time" content="2023-11-24T05:58:00.000Z">
+<meta property="article:modified_time" content="2023-11-25T16:09:24.817Z">
 <meta property="article:author" content="ztorchan">
+<meta property="article:tag" content="文件系统">
 <meta property="article:tag" content="论文阅读">
-<meta property="article:tag" content="分离式内存">
-<meta property="article:tag" content="基数树">
+<meta property="article:tag" content="元数据">
 <meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:image" content="http://ztorchan.com/2023/09/23/readpaper-SMART/fig1-read_performances_of_Sherman_and_ART.jpg">
+<meta name="twitter:image" content="http://ztorchan.com/2023/11/24/readpaper-SingularFS/fig1-existing_fs_analysis.jpg">
   
   
     <meta name="referrer" content="no-referrer-when-downgrade">
   
   
-  <title>论文阅读 | SMART：A High-Performance Adaptive Radix Tree for Disaggregated Memory - ZTorchan</title>
+  <title>论文阅读 | SingularFS：A Billion-Scale Distributed File System Using a Single Metadata Server - ZTorchan</title>
 
   <link  rel="stylesheet" href="https://lib.baomitu.com/twitter-bootstrap/4.6.1/css/bootstrap.min.css" />
 
@@ -287,7 +287,7 @@
       <div class="banner-text text-center fade-in-up">
         <div class="h2">
           
-            <span id="subtitle" data-typed-text="论文阅读 | SMART：A High-Performance Adaptive Radix Tree for Disaggregated Memory"></span>
+            <span id="subtitle" data-typed-text="论文阅读 | SingularFS：A Billion-Scale Distributed File System Using a Single Metadata Server"></span>
           
         </div>
 
@@ -298,8 +298,8 @@
     
       <span class="post-meta">
         <i class="iconfont icon-date-fill" aria-hidden="true"></i>
-        <time datetime="2023-09-23 19:09" pubdate>
-          2023年9月23日 晚上
+        <time datetime="2023-11-24 13:58" pubdate>
+          2023年11月24日 下午
         </time>
       </span>
     
@@ -310,7 +310,7 @@
       <span class="post-meta mr-2">
         <i class="iconfont icon-chart"></i>
         
-          3.9k 字
+          3.1k 字
         
       </span>
     
@@ -358,71 +358,70 @@
         <div id="board">
           <article class="post-content mx-auto">
             <!-- SEO header -->
-            <h1 style="display: none">论文阅读 | SMART：A High-Performance Adaptive Radix Tree for Disaggregated Memory</h1>
+            <h1 style="display: none">论文阅读 | SingularFS：A Billion-Scale Distributed File System Using a Single Metadata Server</h1>
             
             
               <div class="markdown-body">
                 
-                <p>文章提出了一个适用于分离式内存架构的基数树。主要工作由复旦大学和华为云完成，发表于OSDI'23。</p>
+                <p>这篇文章出自清华大学存储研究组（舒继武团队），探讨了可承载Billion级别分布式文件系统的元数据服务构建。文章发表在了ATC`23。</p>
 <span id="more"></span>
-<p><em>Paper Link</em>: <a target="_blank" rel="noopener" href="https://www.usenix.org/conference/osdi23/presentation/luo">https://www.usenix.org/conference/osdi23/presentation/luo</a><br />
-<em>Open Source</em>: <a target="_blank" rel="noopener" href="https://github.com/dmemsys/SMART">https://github.com/dmemsys/SMART</a></p>
-<p>分离式内存（Disaggregated Memory，DM）最近几年发展得如火如荼，先前已经有不少研究探讨DM上的索引结构了。B+树作为使用最广的索引结构，自然已经有人研究过怎么将它适配于DM，比如说<a target="_blank" rel="noopener" href="https://dl.acm.org/doi/abs/10.1145/3514221.3517824">Sherman</a>。</p>
-<p>但是B+树也有它的问题：<strong>读写放大</strong>。这一点主要体现在对叶子节点的读写上，B+树的每个叶子节点保存了多个Key-Value（KV）对，运行在计算节点上的进程要搜索某一个Key时，得把整个叶子节点都读回来。假设一个叶子节点包含了32个KV对，那就有32倍的读放大。写放大也是一样的道理。尽管Sherman对B+树的写做了优化，解决了写放大问题，但读放大问题依然存在。读写放大问题在DM架构上的影响还是非常明显的，毕竟浪费的是网络带宽。文章就做了些实验比较Sherman和<a target="_blank" rel="noopener" href="https://ieeexplore.ieee.org/document/6544812">ART</a>（SOTA基数树），总结了两个结论：</p>
+<p><em>Paper Link</em>: <a target="_blank" rel="noopener" href="https://www.usenix.org/conference/atc23/presentation/guo">https://www.usenix.org/conference/atc23/presentation/guo</a><br />
+<em>Open Source</em>: 未开源</p>
+<p>文章的标题起得相当直白，利用单个元数据服务器支撑Billion级别的分布式文件系统。大规模的分布式文件系统（DFS）已经是现代数据中心最重要的基础设施之一，但想要用单个元数据服务支撑整个DFS还是相当困难的，现有的DFS都包含多个元数据服务器。而RDMA和持久性内存PM带来的硬件提升给了这个机会，无论是性能还是访问粒度上的提升都给元数据服务带来了很大的上升空间。</p>
+<p>单单把硬件换了肯定是不够的，文章分析了现有的文件系统不足之处，得出了搭建高性能元数据服务的三个挑战：</p>
 <figure>
-<img src="fig1-read_performances_of_Sherman_and_ART.jpg" srcset="/img/loading.gif" lazyload alt="图1 Sherman和ART在YCSB" /><figcaption>图1 Sherman和ART在YCSB</figcaption>
+<img src="fig1-existing_fs_analysis.jpg" srcset="/img/loading.gif" lazyload alt="图1 现有文件系统性能分析" /><figcaption>图1 现有文件系统性能分析</figcaption>
 </figure>
 <ul>
-<li><p><strong>B+树的吞吐量受到了带宽的限制</strong>。这一点可以很容易从图1的(a)和(b)看出来，随着客户端数量上升，Sherman的吞吐量首先达到上限，ART的吞吐量上限是Sherman的两倍还多。而且单个叶子节点存放的KV对越多，Sherman的吞吐量越低。可能大伙觉得，多读回来的数据可以作为缓存啊，这不就把读放大问题完美解决。但是实验(c)显示，即使给到了600MB的缓存，吞吐量依然受限于网络带宽无法继续提升（文章没有做解释）。相反，ART的吞吐上限受制于RNIC的IOPS，比Sherman好很多。</p></li>
-<li><p><strong>网络拥塞的提前发生加剧了B+树的延迟</strong>。在相同吞吐量下，由于读写放大，Sherman占用的网络带宽比ART高得多，这导致了网络拥塞提前发生。一旦网络拥塞发生，延迟就开始提高了。从实验(d)可以看出来，Sherman的P99延迟增长速度是相当快。</p></li>
+<li><p><strong>崩溃一致性的保障需要大量开销</strong>。现有文件系统一般使用写前日志（write-ahead-logging）或者日志型文件系统（log-structured-filesystem）来保证崩溃一致性。但它们各自也有缺点：写前日志方式需要两次写入数据，引入了写放大问题；日志型文件系统则是造成了繁重的垃圾回收任务。图1中，Ext4-DAX采用WAL方式保证崩溃一致性，InfiniFS和CephFS则依靠其底层存储的事务达成此目标，它们的吞吐率都比较低。NOVA采用了日志型文件系统，但在协调多节点并发更新时表现也不如人意。</p></li>
+<li><p><strong>多节点对共享目录并发操作时的锁争用，导致极低的性能和并行度</strong>。在同一共享目录下并发的<em>create</em>和<em>delete</em>操作需要同时修改共同的父目录dentry和inode，这就带来了严重的锁争用，使得性能大幅度降低（图1 b）。</p></li>
+<li><p><strong>当前文件系统没有充分利用NUMA架构</strong>。NUMA感知的设计对于元数据服务的存储和处理来说是非常重要的。一方面，过往的工作表明远程PM访问在带宽和小粒度吞吐率上有着明显的下降，因此是否充分利用NUMA的局部性对发挥PM的性能有莫大的影响。另一方面，现有的文件系统无法在保持NUMA局部性的同时扩展到多NUMA节点上，这是由于它们的粗粒度分区策略。</p></li>
 </ul>
-<p>基于这两个观察，文章就得出一个结论：<strong>比起B+树，基数树更适合用于DM架构</strong>。当然ART也不是完美的，要想将ART适配于DM架构，仍然有三个问题需要解决：</p>
+<h1 id="singularfs">SingularFS</h1>
+<p>针对前面提到的三点挑战，文章提出了针对性设计，并依此实现了SingularFS。</p>
+<h2 id="总览">总览</h2>
+<figure>
+<img src="fig2-architecture.jpg" srcset="/img/loading.gif" lazyload alt="图2 SingualrFS架构" /><figcaption>图2 SingualrFS架构</figcaption>
+</figure>
+<p>SingularFS由客户端库和服务端组成。服务端在PM中存储文件系统元信息，客户端通过用户态库提供的类POSIX接口进行访问。服务端和客户端都配备了RDMA网卡进行通信。</p>
+<figure>
+<img src="fig3-md_in_kvstore.jpg" srcset="/img/loading.gif" lazyload alt="图3 KV存储中的元数据" /><figcaption>图3 KV存储中的元数据</figcaption>
+</figure>
+<p>SingularFS采用通用的KV存储作为其存储后端，要求该KV存储能够执行<strong>单点查询</strong>和<strong>前缀匹配（范围查询）</strong>，同时需要保证单目标操作的原子性。</p>
+<p>SingularFS将目录的Inode分为两部分：（1）<strong>时间戳元数据（timestamp metadata）</strong>，包括<em>atime</em>、<em>ctime</em>、<em>mtime</em>，它们的Key为&lt;<em>inode ID</em>&gt;；（2）<strong>访问元数据（access metadata）</strong>，包括除时间戳元数据以外的信息，它们的Key为&lt;<em>parent inode ID/name</em>&gt;。对于文件的Inode信息，它们的Key也为&lt;<em>parent inode ID/name</em>&gt;。</p>
+<p>SingularFS并不直接维护目录项dentry，dentry的维护更新是融合进入Inode KV对的维护更新的，借助底层KV存储的前缀匹配范围查询，可以很容易获取目录项信息。例如客户端发起一次<em>readdir</em>调用查询Inode ID为1的目录下的目录项，那么服务端只需要在KV存储中以<em>1/</em>为前缀进行范围查询，便能查找到该目录下所有的文件和子目录。</p>
+<h2 id="无日志元数据操作log-free-metadata-operations">无日志元数据操作（Log-free Metadata Operations）</h2>
+<figure>
+<img src="fig4-metadata_classification.jpg" srcset="/img/loading.gif" lazyload alt="图4 元数据操作分类" /><figcaption>图4 元数据操作分类</figcaption>
+</figure>
+<p>为了解决崩溃一致性保障带来的大量开销，SingularFS设计了无日志同时保证崩溃一致性的元数据操作。</p>
+<p>SingualrFS首先将元数据操作涉及到的元数据个数，将它们分为了三类，如图4所示。<em>open</em>、<em>close</em>等操作仅涉及目标Inode的修改，它们为<strong>单点操作（Single-node）</strong>。<em>mkdir</em>、<em>rmdir</em>等创建和删除操作涉及到目标Inode和父目录Inode的修改，为<strong>两点操作（Double-node）</strong>。而<em>rename</em>操作较为特殊，它要同时修改旧Inode、新Inode和它们各自的父目录Inode，因此它单独成一类。它们保证崩溃一致性的方式各自不同。</p>
 <ul>
-<li><p><strong>有锁并发控制导致写性能低下</strong>。现有的ART都使用了有锁并发控制来实现同步。但是在DM架构上，锁操作开销是很大的，每一次锁操作都是一次网络往返（RDMA_CAS）。而且，忙等待之类的锁冲突机制还会在上锁失败时不断重试，进一步加剧RNIC的IOPS浪费。一个可能的解决方案是设计无锁算法。但是无锁算法依赖于out-of-place的更新模式（只更新8字节地址保证更新的原子性）。但是这种更新模式又会导致计算节点本地缓存的频繁失效，造成缓存抖动问题。</p></li>
-<li><p><strong>同节点客户端的重复I/O浪费RNIC的IOPS</strong>。前面有提到，ART能够突破B+树受到的带宽限制，但依然受限于RNIC的IOPS。IOPS吃紧的情况下，还是有浪费的情况。比如说，位于同一个计算节点的多个客户端，要读内存池的同一个KV对，每个客户端都会发起一个网络I/O，这种不必要的重复I/O就是对IOPS的严重浪费了。写也是同理。</p></li>
-<li><p><strong>ART的结构特征加剧了计算端缓存失效问题</strong>。路径压缩和适应性节点（根据需要修改节点内指针数组长度）是ART降低内存开销重要的结构特征。但这就会引入ART内部节点父子关系的变化或节点类型变化等等问题，进而引入计算端缓存失效的可能性。如果没有合适的判别机制，可能会导致错误的数据访问。</p></li>
+<li><p><strong>单点操作</strong>。单点操作由于只修改一个KV对，因此其崩溃一致性可以直接由底层KV存储保证。</p></li>
+<li><p><strong>两点操作</strong>。两点操作的崩溃一致性保证是SingularFS的设计重点，它通过下面所述的<strong>有序元数据更新实现</strong>。</p></li>
+<li><p><strong>Rename</strong>。Rename的崩溃一致性仍然由写前日志保证，由于Rename在文件系统实际使用中占比较少，这不会带来太大的性能影响。</p></li>
 </ul>
-<p>本文就针对前面提出的三点挑战，进行了针对性设计，提出了SMART，一个面向DM架构的高性能ART。</p>
-<h1 id="smart">SMART</h1>
-<p>SMART针对三点挑战，分别提出了三个设计来解决问题。</p>
-<h2 id="层次化的art并发控制">层次化的ART并发控制</h2>
+<h3 id="有序元数据更新ordered-metadata-update">有序元数据更新（Ordered Metadata Update）</h3>
+<p>SingularFS为文件Inode和目录访问信息添加了两个信息：<em>btime</em>（创建时间）和<em>detime</em>（删除时间）。由于两点操作会创建或删除Inode，并修改其父目录的<em>ctime</em>，那么可以观察到：</p>
+<p><em>有一个目录Inode <span class="math inline">\(d\)</span>，对其任意一个子Inode <span class="math inline">\(c\)</span>，都应有<span class="math inline">\(d.ctime \geq max(c.btime, c.dtime)\)</span>。</em></p>
+<p>基于这个观察，SingualrFS有序更新元数据来保证两点操作的崩溃一致性。</p>
 <figure>
-<img src="fig2-data_structure_of_smart.JPG" srcset="/img/loading.gif" lazyload alt="图2 SMART的内部节点和叶子节点" /><figcaption>图2 SMART的内部节点和叶子节点</figcaption>
+<img src="fig5-crash_consistency_of_double_node.jpg" srcset="/img/loading.gif" lazyload alt="图5 两点操作的崩溃一致性保证" /><figcaption>图5 两点操作的崩溃一致性保证</figcaption>
 </figure>
-<p>SMART的节点被分为<strong>内部节点（Internal Node）</strong>和<strong>叶子节点（Leaf Node）</strong>两种。所谓层次化的并发控制，意思就是内部节点采用无锁并发，而叶子节点采用有锁并发。</p>
-<p>内部节点主要由三个部分组成。第一部分是Reverse Pointer，这里存储指向父节点的指针；第二部分是Header，存放了当前节点深度Depth、节点类型Type<sub>node</sub>（NODE_4/NODE_16/NODE_64/NODE_256）、压缩的Partial Key数组和当前数组大小Size<sub>array</sub>；第三部分就是Slot数组，保存了子节点的信息，每个Slot由对应Partial Key、是否为叶子节点的标记位Leaf、子节点类型Type<sub>node</sub>（若为内部节点）或子节点长度（若为叶子节点），以及48位地址组成。</p>
-<p>叶子节点也由若干部分构成，包括指向父节点的Reverse Pointer，用于标记KV是否被删除的有效位Valid，校验和Checksum，固定长度的KV对，以及在尾部的锁Lock。</p>
-<p>发现了么？SMART把内部节点的每一部分都设计为了8字节大小，这样就可以直接使用RDMA CAS操作直接原子地进行修改了，不用上锁。而对于叶子节点，仍然采用了锁机制。写者之间会直接用互斥锁进行同步，在写之前进行上锁；读者则采用乐观策略，将节点内容读回后通过校验和检查内容是否一致，不一致则重新读。此外，可以看到SMART将锁放置在了叶子节点的尾部，这样客户端就可以在写回数据的时候顺便释放锁了，因为RDMA保证了写的顺序性，释放锁时前面的数据一定已经完成修改了。</p>
-<p>为了更好地展示SMART的各种操作，文章用图展示了对一颗ART树进行一系列操作的变换过程：</p>
+<p>对于Inode创建操作，如图5（a）所示，一共分为两个步骤。先创建目标Inode并将其设置其<em>btime</em>，随后再将其父目录Inode的<em>ctime</em>和<em>mtime</em>设置为相同的值。若在这两步之间系统发生了崩溃，重启后可以发现子Inode的<em>btime</em>大于父目录Inode的<em>ctime</em>和<em>mtime</em>，那么便可以完成修复。</p>
+<p>对于Inode删除操作，如图5（b）所示，一共分为三个步骤。首先设置目标Inode的<em>dtime</em>使其失效，其次设置父目录Inode的<em>ctime</em>和<em>mtime</em>为相同的值，最后在KV存储中删除目标Inode的KV对。若系统在第一和第二步之间崩溃，依然可以通过比较父目录Inode和子Inode的这几个时间戳发现错误；若在第二和第三步之间发生崩溃，则可以通过检查子Inode的<em>dtime</em>是否已被设置以发现应当被删除的Inode，并删除相应的KV对。</p>
+<h2 id="分层并发控制hierachical-concurrency-control">分层并发控制（Hierachical Concurrency Control）</h2>
+<p>分层并发控制的设计是为了解决多节点对共享目录并发操作时的低性能和并行度的问题。当多节点并发地对同一个共享目录下进行两点操作，会产生对父目录的<strong>目录项</strong>和<strong>时间戳</strong>两方面的写冲突。由于在SingularFS中，目录项是跟随子Inode的KV数据对一同变化的，目录项的写冲突问题自然而然就消失了，只剩下对时间戳的写冲突需要解决。</p>
+<p>文章观察到两点操作仅仅只需要修改父目录Inode的<em>ctime</em>和<em>mtime</em>，一共16B大小。因此利用16B原子CAS操作可以实现无锁更新，基于此SingularFS设计了分层并发控制。</p>
+<p>SingularFS首先将元数据操作分为了三类：<br />
+- <em>update</em>：只更新目标Inode的<em>ctime</em>和<em>mtime</em>的操作。<br />
+- <em>writer</em>：更新目标Inode其它信息的操作。<br />
+- <em>reader</em>：不更新目标Inode的只读操作。<br />
+例如，<em>create</em>/<em>delete</em>操作既是目标节点的<em>write</em>，又是其父目录的<em>updater</em>。</p>
 <figure>
-<img src="fig3-operations.jpg" srcset="/img/loading.gif" lazyload alt="图3 SMART的一系列操作变化过程" /><figcaption>图3 SMART的一系列操作变化过程</figcaption>
+<img src="fig6-hierarchical_concurrency_control_algorithm.jpg" srcset="/img/loading.gif" lazyload alt="图6 分层并发控制算法" /><figcaption>图6 分层并发控制算法</figcaption>
 </figure>
-<h2 id="读委托写合并">读委托写合并</h2>
-<p>这个机制用于解决同一计算节点上不同客户端对相同Key重复读的I/O浪费问题。</p>
-<figure>
-<img src="fig4-read_delegation.jpg" srcset="/img/loading.gif" lazyload alt="图4 读委托" /><figcaption>图4 读委托</figcaption>
-</figure>
-<p>SMART客户端在读时会对Key计算一个哈希值，并且在尝试在本地对这个哈希值上锁，成功上锁的客户端就会开始执行正常的RDMA读流程，并且进入一个读时间窗口（Time Window）。如果上锁失败，则说明这个哈希值已经被其它客户端上锁了，这时候就会去比较被上锁的Key（也就是正在执行读的Key）究竟是不是同一个Key。如果不是同一个Key，那客户端就会直接进入正常的读流程，从内存池读回目标KV对；如果是同一个Key，那客户端就不会去内存池读，而是进入一个等待队列。持有锁的客户端在读回目标KV后，会将它分享给等待队列中的每一个客户端，从而就可以通过一次网络I/O完成多个读操作。</p>
-<figure>
-<img src="fig5-write_combining.jpg" srcset="/img/loading.gif" lazyload alt="图5 写合并" /><figcaption>图5 写合并</figcaption>
-</figure>
-<p>写合并也是差不多的思路。成功拿到锁的客户端会维护一个写缓存（WCB），在写窗口期间，其它客户端对同一个Key的写都会转变成对WCB的写。和读委托稍微不同的是，写时间窗口在持有锁的客户端给目标叶子节点上锁后就结束了。在成功对叶子节点上锁后，持有锁的客户端就会将WCB内的值写入内存池，从而完成写操作。如此一来，多个客户端对同一Key的写也由一次网络I/O完成。</p>
-<p>但是简单将读委托和写合并一起实施，也会有问题。例如A发起对K的读，B对K先写后读。A先从内存池读到K的旧值，但数据仍然还在网络通路上。随后B将新值写入内存池，然后发起读加入等待队列。A读的数据返回计算节点，分享给B，此时从B的视角看就是写入的新值没能成功读回，<strong>因果一致性遭到破坏</strong>。所以，为了让避免这种情况发生，SMART设计了一种机制，简单地来说，当读写并发的时候，如果写比读先完成（网络先返回），那当读数据返回时，只有写完成之前发起请求的读者可以被共享数据，其余读者需要自行发起网络请求读取新数据。（这一部分论文没有交代清楚，强烈建议看代码是怎么实现的）。</p>
-<h2 id="art缓存">ART缓存</h2>
-<figure>
-<img src="fig6-art_cache.jpg" srcset="/img/loading.gif" lazyload alt="图6 计算节点的ART缓存" /><figcaption>图6 计算节点的ART缓存</figcaption>
-</figure>
-<p>SMART客户端会在本地节点也维护一棵ART缓存树，它的结构如图6所示。缓存树的叶子节点就是缓存条目，缓存了内存池中某个内部节点的信息：深度Depth、节点地址Node Address、以及它的子节点信息Slot数组（这里的Slot和前面提到的内存池的Slot结构一致）。那要怎么判断缓存是否还有效呢？文章分了三大缓存失效场景类型来讨论：</p>
-<ul>
-<li><p><strong>父子节点关系的变化</strong>。这种缓存失效类型一般发生在节点分裂。验证方法是根据缓存条目的目标Slot读回目标节点数据，然后比较读回数据中的Reverse Pointer和缓存条目的Node Address是否相同，即可判断缓存是否失效。</p></li>
-<li><p><strong>节点类型发生变化</strong>。验证方式是，根据缓存条目的目标Slot读回目标节点数据，查看读回数据中的Type<sub>node</sub>和缓存中的Type<sub>node</sub>是否相同，即可判断缓存是否失效。</p></li>
-<li><p><strong>节点是否删除</strong>。对于内部节点，验证读回的数据中Type<sub>node</sub>是否为NODE_0，判断节点是否已删除；对于叶子节点，验证读回数据中的Valid位，以判断节点是否已删除。</p></li>
-</ul>
-<h1 id="实验">实验</h1>
-<p>直接看论文吧。</p>
-<h1 id="结论">结论</h1>
-<p>文章针对DM架构上B+树读写放大严重的问题，设计了适用于DM架构的基数树SMART。其中精心设计了树的节点数据结构，使得内部节点可以利用RDMA CAS操作实现无锁并发控制。同时为了保留对叶子节点的in-place-update更新模式，对叶子节点的更新仍然采用有锁并发控制，但是将锁放置在节点最后，利用RDMA更新的顺序保证，优化网络I/O次数。</p>
-<p>比较亮眼的是读委托写合并机制，这个实打实降低了对热点Key访问的网络I/O次数，最重要的是这个机制对上层是透明的，可以移植在其它场景下，优化网络I/O。</p>
+<p>基于上述分类，SingularFS设计了如图6的并发控制算法。</p>
 
                 
               </div>
@@ -456,11 +455,11 @@
     <div class="post-meta">
       <i class="iconfont icon-tags"></i>
       
+        <a href="/tags/%E6%96%87%E4%BB%B6%E7%B3%BB%E7%BB%9F/">#文件系统</a>
+      
         <a href="/tags/%E8%AE%BA%E6%96%87%E9%98%85%E8%AF%BB/">#论文阅读</a>
       
-        <a href="/tags/%E5%88%86%E7%A6%BB%E5%BC%8F%E5%86%85%E5%AD%98/">#分离式内存</a>
-      
-        <a href="/tags/%E5%9F%BA%E6%95%B0%E6%A0%91/">#基数树</a>
+        <a href="/tags/%E5%85%83%E6%95%B0%E6%8D%AE/">#元数据</a>
       
     </div>
   
@@ -472,8 +471,8 @@
 
   <div class="license-box my-3">
     <div class="license-title">
-      <div>论文阅读 | SMART：A High-Performance Adaptive Radix Tree for Disaggregated Memory</div>
-      <div>http://ztorchan.com/2023/09/23/readpaper-SMART/</div>
+      <div>论文阅读 | SingularFS：A Billion-Scale Distributed File System Using a Single Metadata Server</div>
+      <div>http://ztorchan.com/2023/11/24/readpaper-SingularFS/</div>
     </div>
     <div class="license-meta">
       
@@ -485,7 +484,7 @@
       
         <div class="license-meta-item license-meta-date">
           <div>发布于</div>
-          <div>2023年9月23日</div>
+          <div>2023年11月24日</div>
         </div>
       
       
@@ -517,18 +516,12 @@
                   <article class="post-prev col-6">
                     
                     
-                      <a href="/2023/11/24/readpaper-SingularFS/" title="论文阅读 | SingularFS：A Billion-Scale Distributed File System Using a Single Metadata Server">
-                        <i class="iconfont icon-arrowleft"></i>
-                        <span class="hidden-mobile">论文阅读 | SingularFS：A Billion-Scale Distributed File System Using a Single Metadata Server</span>
-                        <span class="visible-mobile">上一篇</span>
-                      </a>
-                    
                   </article>
                   <article class="post-next col-6">
                     
                     
-                      <a href="/2023/06/02/some-brpc-bugs-and-solutions/" title="使用brpc遇到的一些bug和解决方案">
-                        <span class="hidden-mobile">使用brpc遇到的一些bug和解决方案</span>
+                      <a href="/2023/09/23/readpaper-SMART/" title="论文阅读 | SMART：A High-Performance Adaptive Radix Tree for Disaggregated Memory">
+                        <span class="hidden-mobile">论文阅读 | SMART：A High-Performance Adaptive Radix Tree for Disaggregated Memory</span>
                         <span class="visible-mobile">下一篇</span>
                         <i class="iconfont icon-arrowright"></i>
                       </a>

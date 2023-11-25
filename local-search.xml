@@ -4,6 +4,35 @@
   
   
   <entry>
+    <title>论文阅读 | SingularFS：A Billion-Scale Distributed File System Using a Single Metadata Server</title>
+    <link href="/2023/11/24/readpaper-SingularFS/"/>
+    <url>/2023/11/24/readpaper-SingularFS/</url>
+    
+    <content type="html"><![CDATA[<p>这篇文章出自清华大学存储研究组（舒继武团队），探讨了可承载Billion级别分布式文件系统的元数据服务构建。文章发表在了ATC`23。</p><span id="more"></span><p><em>Paper Link</em>: <a href="https://www.usenix.org/conference/atc23/presentation/guo">https://www.usenix.org/conference/atc23/presentation/guo</a><br /><em>Open Source</em>: 未开源</p><p>文章的标题起得相当直白，利用单个元数据服务器支撑Billion级别的分布式文件系统。大规模的分布式文件系统（DFS）已经是现代数据中心最重要的基础设施之一，但想要用单个元数据服务支撑整个DFS还是相当困难的，现有的DFS都包含多个元数据服务器。而RDMA和持久性内存PM带来的硬件提升给了这个机会，无论是性能还是访问粒度上的提升都给元数据服务带来了很大的上升空间。</p><p>单单把硬件换了肯定是不够的，文章分析了现有的文件系统不足之处，得出了搭建高性能元数据服务的三个挑战：</p><figure><img src="fig1-existing_fs_analysis.jpg" alt="图1 现有文件系统性能分析" /><figcaption>图1 现有文件系统性能分析</figcaption></figure><ul><li><p><strong>崩溃一致性的保障需要大量开销</strong>。现有文件系统一般使用写前日志（write-ahead-logging）或者日志型文件系统（log-structured-filesystem）来保证崩溃一致性。但它们各自也有缺点：写前日志方式需要两次写入数据，引入了写放大问题；日志型文件系统则是造成了繁重的垃圾回收任务。图1中，Ext4-DAX采用WAL方式保证崩溃一致性，InfiniFS和CephFS则依靠其底层存储的事务达成此目标，它们的吞吐率都比较低。NOVA采用了日志型文件系统，但在协调多节点并发更新时表现也不如人意。</p></li><li><p><strong>多节点对共享目录并发操作时的锁争用，导致极低的性能和并行度</strong>。在同一共享目录下并发的<em>create</em>和<em>delete</em>操作需要同时修改共同的父目录dentry和inode，这就带来了严重的锁争用，使得性能大幅度降低（图1 b）。</p></li><li><p><strong>当前文件系统没有充分利用NUMA架构</strong>。NUMA感知的设计对于元数据服务的存储和处理来说是非常重要的。一方面，过往的工作表明远程PM访问在带宽和小粒度吞吐率上有着明显的下降，因此是否充分利用NUMA的局部性对发挥PM的性能有莫大的影响。另一方面，现有的文件系统无法在保持NUMA局部性的同时扩展到多NUMA节点上，这是由于它们的粗粒度分区策略。</p></li></ul><h1 id="singularfs">SingularFS</h1><p>针对前面提到的三点挑战，文章提出了针对性设计，并依此实现了SingularFS。</p><h2 id="总览">总览</h2><figure><img src="fig2-architecture.jpg" alt="图2 SingualrFS架构" /><figcaption>图2 SingualrFS架构</figcaption></figure><p>SingularFS由客户端库和服务端组成。服务端在PM中存储文件系统元信息，客户端通过用户态库提供的类POSIX接口进行访问。服务端和客户端都配备了RDMA网卡进行通信。</p><figure><img src="fig3-md_in_kvstore.jpg" alt="图3 KV存储中的元数据" /><figcaption>图3 KV存储中的元数据</figcaption></figure><p>SingularFS采用通用的KV存储作为其存储后端，要求该KV存储能够执行<strong>单点查询</strong>和<strong>前缀匹配（范围查询）</strong>，同时需要保证单目标操作的原子性。</p><p>SingularFS将目录的Inode分为两部分：（1）<strong>时间戳元数据（timestamp metadata）</strong>，包括<em>atime</em>、<em>ctime</em>、<em>mtime</em>，它们的Key为&lt;<em>inode ID</em>&gt;；（2）<strong>访问元数据（access metadata）</strong>，包括除时间戳元数据以外的信息，它们的Key为&lt;<em>parent inode ID/name</em>&gt;。对于文件的Inode信息，它们的Key也为&lt;<em>parent inode ID/name</em>&gt;。</p><p>SingularFS并不直接维护目录项dentry，dentry的维护更新是融合进入Inode KV对的维护更新的，借助底层KV存储的前缀匹配范围查询，可以很容易获取目录项信息。例如客户端发起一次<em>readdir</em>调用查询Inode ID为1的目录下的目录项，那么服务端只需要在KV存储中以<em>1/</em>为前缀进行范围查询，便能查找到该目录下所有的文件和子目录。</p><h2 id="无日志元数据操作log-free-metadata-operations">无日志元数据操作（Log-free Metadata Operations）</h2><figure><img src="fig4-metadata_classification.jpg" alt="图4 元数据操作分类" /><figcaption>图4 元数据操作分类</figcaption></figure><p>为了解决崩溃一致性保障带来的大量开销，SingularFS设计了无日志同时保证崩溃一致性的元数据操作。</p><p>SingualrFS首先将元数据操作涉及到的元数据个数，将它们分为了三类，如图4所示。<em>open</em>、<em>close</em>等操作仅涉及目标Inode的修改，它们为<strong>单点操作（Single-node）</strong>。<em>mkdir</em>、<em>rmdir</em>等创建和删除操作涉及到目标Inode和父目录Inode的修改，为<strong>两点操作（Double-node）</strong>。而<em>rename</em>操作较为特殊，它要同时修改旧Inode、新Inode和它们各自的父目录Inode，因此它单独成一类。它们保证崩溃一致性的方式各自不同。</p><ul><li><p><strong>单点操作</strong>。单点操作由于只修改一个KV对，因此其崩溃一致性可以直接由底层KV存储保证。</p></li><li><p><strong>两点操作</strong>。两点操作的崩溃一致性保证是SingularFS的设计重点，它通过下面所述的<strong>有序元数据更新实现</strong>。</p></li><li><p><strong>Rename</strong>。Rename的崩溃一致性仍然由写前日志保证，由于Rename在文件系统实际使用中占比较少，这不会带来太大的性能影响。</p></li></ul><h3 id="有序元数据更新ordered-metadata-update">有序元数据更新（Ordered Metadata Update）</h3><p>SingularFS为文件Inode和目录访问信息添加了两个信息：<em>btime</em>（创建时间）和<em>detime</em>（删除时间）。由于两点操作会创建或删除Inode，并修改其父目录的<em>ctime</em>，那么可以观察到：</p><p><em>有一个目录Inode <span class="math inline">\(d\)</span>，对其任意一个子Inode <span class="math inline">\(c\)</span>，都应有<span class="math inline">\(d.ctime \geq max(c.btime, c.dtime)\)</span>。</em></p><p>基于这个观察，SingualrFS有序更新元数据来保证两点操作的崩溃一致性。</p><figure><img src="fig5-crash_consistency_of_double_node.jpg" alt="图5 两点操作的崩溃一致性保证" /><figcaption>图5 两点操作的崩溃一致性保证</figcaption></figure><p>对于Inode创建操作，如图5（a）所示，一共分为两个步骤。先创建目标Inode并将其设置其<em>btime</em>，随后再将其父目录Inode的<em>ctime</em>和<em>mtime</em>设置为相同的值。若在这两步之间系统发生了崩溃，重启后可以发现子Inode的<em>btime</em>大于父目录Inode的<em>ctime</em>和<em>mtime</em>，那么便可以完成修复。</p><p>对于Inode删除操作，如图5（b）所示，一共分为三个步骤。首先设置目标Inode的<em>dtime</em>使其失效，其次设置父目录Inode的<em>ctime</em>和<em>mtime</em>为相同的值，最后在KV存储中删除目标Inode的KV对。若系统在第一和第二步之间崩溃，依然可以通过比较父目录Inode和子Inode的这几个时间戳发现错误；若在第二和第三步之间发生崩溃，则可以通过检查子Inode的<em>dtime</em>是否已被设置以发现应当被删除的Inode，并删除相应的KV对。</p><h2 id="分层并发控制hierachical-concurrency-control">分层并发控制（Hierachical Concurrency Control）</h2><p>分层并发控制的设计是为了解决多节点对共享目录并发操作时的低性能和并行度的问题。当多节点并发地对同一个共享目录下进行两点操作，会产生对父目录的<strong>目录项</strong>和<strong>时间戳</strong>两方面的写冲突。由于在SingularFS中，目录项是跟随子Inode的KV数据对一同变化的，目录项的写冲突问题自然而然就消失了，只剩下对时间戳的写冲突需要解决。</p><p>文章观察到两点操作仅仅只需要修改父目录Inode的<em>ctime</em>和<em>mtime</em>，一共16B大小。因此利用16B原子CAS操作可以实现无锁更新，基于此SingularFS设计了分层并发控制。</p><p>SingularFS首先将元数据操作分为了三类：<br />- <em>update</em>：只更新目标Inode的<em>ctime</em>和<em>mtime</em>的操作。<br />- <em>writer</em>：更新目标Inode其它信息的操作。<br />- <em>reader</em>：不更新目标Inode的只读操作。<br />例如，<em>create</em>/<em>delete</em>操作既是目标节点的<em>write</em>，又是其父目录的<em>updater</em>。</p><figure><img src="fig6-hierarchical_concurrency_control_algorithm.jpg" alt="图6 分层并发控制算法" /><figcaption>图6 分层并发控制算法</figcaption></figure><p>基于上述分类，SingularFS设计了如图6的并发控制算法。</p>]]></content>
+    
+    
+    <categories>
+      
+      <category>论文阅读</category>
+      
+    </categories>
+    
+    
+    <tags>
+      
+      <tag>文件系统</tag>
+      
+      <tag>论文阅读</tag>
+      
+      <tag>元数据</tag>
+      
+    </tags>
+    
+  </entry>
+  
+  
+  
+  <entry>
     <title>论文阅读 | SMART：A High-Performance Adaptive Radix Tree for Disaggregated Memory</title>
     <link href="/2023/09/23/readpaper-SMART/"/>
     <url>/2023/09/23/readpaper-SMART/</url>
