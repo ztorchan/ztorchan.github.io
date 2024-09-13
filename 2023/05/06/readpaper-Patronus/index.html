@@ -1,0 +1,845 @@
+
+
+<!DOCTYPE html>
+<html lang="zh-CN" data-default-color-scheme=light>
+
+
+
+<head>
+  <meta charset="UTF-8">
+  <link rel="apple-touch-icon" sizes="76x76" href="/img/icon/t.png">
+  <link rel="icon" href="/img/icon/t.png">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, shrink-to-fit=no">
+  <meta http-equiv="x-ua-compatible" content="ie=edge">
+  
+  <meta name="theme-color" content="#2f4154">
+  <meta name="author" content="ztorchan">
+  <meta name="keywords" content="">
+  
+    <meta name="description" content="这篇文章发表于FAST&#39;23，是清华大学存储研究组提出的工作。文章介绍了他们基于RDMA并通过软件协同设计实现的高性能且有保护的远程内存。">
+<meta property="og:type" content="article">
+<meta property="og:title" content="论文阅读 | Patronus：High-Performance and Protective Remote Memory">
+<meta property="og:url" content="http://ztorchan.com/2023/05/06/readpaper-Patronus/index.html">
+<meta property="og:site_name" content="ZTorchan">
+<meta property="og:description" content="这篇文章发表于FAST&#39;23，是清华大学存储研究组提出的工作。文章介绍了他们基于RDMA并通过软件协同设计实现的高性能且有保护的远程内存。">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="http://ztorchan.com/2023/05/06/readpaper-Patronus/Fig1-protection_releated_operations_latency.jpg">
+<meta property="og:image" content="http://ztorchan.com/2023/05/06/readpaper-Patronus/Table1-existing_solution.jpg">
+<meta property="og:image" content="http://ztorchan.com/2023/05/06/readpaper-Patronus/Table2-interface.jpg">
+<meta property="og:image" content="http://ztorchan.com/2023/05/06/readpaper-Patronus/Fig2-architecture.jpg">
+<meta property="og:image" content="http://ztorchan.com/2023/05/06/readpaper-Patronus/Fig3-format_of_32B_header.jpg">
+<meta property="og:image" content="http://ztorchan.com/2023/05/06/readpaper-Patronus/Fig4-handover.jpg">
+<meta property="article:published_time" content="2023-05-06T11:59:46.000Z">
+<meta property="article:modified_time" content="2024-09-12T14:44:58.487Z">
+<meta property="article:author" content="ztorchan">
+<meta property="article:tag" content="RDMA">
+<meta property="article:tag" content="论文阅读">
+<meta property="article:tag" content="Remote Memory">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="http://ztorchan.com/2023/05/06/readpaper-Patronus/Fig1-protection_releated_operations_latency.jpg">
+  
+  
+    <meta name="referrer" content="no-referrer-when-downgrade">
+  
+  
+  <title>论文阅读 | Patronus：High-Performance and Protective Remote Memory - ZTorchan</title>
+
+  <link  rel="stylesheet" href="https://lib.baomitu.com/twitter-bootstrap/4.6.1/css/bootstrap.min.css" />
+
+
+
+  <link  rel="stylesheet" href="https://lib.baomitu.com/github-markdown-css/4.0.0/github-markdown.min.css" />
+
+  <link  rel="stylesheet" href="https://lib.baomitu.com/hint.css/2.7.0/hint.min.css" />
+
+  <link  rel="stylesheet" href="https://lib.baomitu.com/fancybox/3.5.7/jquery.fancybox.min.css" />
+
+
+
+<!-- 主题依赖的图标库，不要自行修改 -->
+<!-- Do not modify the link that theme dependent icons -->
+
+<link rel="stylesheet" href="//at.alicdn.com/t/font_1749284_hj8rtnfg7um.css">
+
+
+
+<link rel="stylesheet" href="//at.alicdn.com/t/font_1736178_lbnruvf0jn.css">
+
+
+<link  rel="stylesheet" href="/css/main.css" />
+
+
+  <link id="highlight-css" rel="stylesheet" href="/css/highlight.css" />
+  
+    <link id="highlight-css-dark" rel="stylesheet" href="/css/highlight-dark.css" />
+  
+
+
+
+
+  <script id="fluid-configs">
+    var Fluid = window.Fluid || {};
+    Fluid.ctx = Object.assign({}, Fluid.ctx)
+    var CONFIG = {"hostname":"ztorchan.com","root":"/","version":"1.9.4","typing":{"enable":true,"typeSpeed":50,"cursorChar":"_","loop":false,"scope":[]},"anchorjs":{"enable":true,"element":"h1,h2,h3,h4,h5,h6","placement":"left","visible":"hover","icon":""},"progressbar":{"enable":true,"height_px":3,"color":"#29d","options":{"showSpinner":false,"trickleSpeed":100}},"code_language":{"enable":true,"default":"TEXT"},"copy_btn":true,"image_caption":{"enable":true},"image_zoom":{"enable":true,"img_url_replace":["",""]},"toc":{"enable":true,"placement":"right","headingSelector":"h1,h2,h3,h4,h5,h6","collapseDepth":0},"lazyload":{"enable":true,"loading_img":"/img/loading.gif","onlypost":false,"offset_factor":2},"web_analytics":{"enable":true,"follow_dnt":false,"baidu":null,"google":null,"gtag":null,"tencent":{"sid":null,"cid":null},"woyaola":null,"cnzz":null,"leancloud":{"app_id":null,"app_key":null,"server_url":null,"path":"window.location.pathname","ignore_local":false}},"search_path":"/local-search.xml"};
+
+    if (CONFIG.web_analytics.follow_dnt) {
+      var dntVal = navigator.doNotTrack || window.doNotTrack || navigator.msDoNotTrack;
+      Fluid.ctx.dnt = dntVal && (dntVal.startsWith('1') || dntVal.startsWith('yes') || dntVal.startsWith('on'));
+    }
+  </script>
+  <script  src="/js/utils.js" ></script>
+  <script  src="/js/color-schema.js" ></script>
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+
+
+  
+<meta name="generator" content="Hexo 6.3.0"></head>
+
+
+<body>
+  
+
+  <header>
+    
+
+<div class="header-inner" style="height: 35vh;">
+  <nav id="navbar" class="navbar fixed-top  navbar-expand-lg navbar-dark scrolling-navbar">
+  <div class="container">
+    <a class="navbar-brand" href="/">
+      <strong>ZTorchan</strong>
+    </a>
+
+    <button id="navbar-toggler-btn" class="navbar-toggler" type="button" data-toggle="collapse"
+            data-target="#navbarSupportedContent"
+            aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
+      <div class="animated-icon"><span></span><span></span><span></span></div>
+    </button>
+
+    <!-- Collapsible content -->
+    <div class="collapse navbar-collapse" id="navbarSupportedContent">
+      <ul class="navbar-nav ml-auto text-center">
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/">
+                <i class="iconfont icon-home-fill"></i>
+                <span>首页</span>
+              </a>
+            </li>
+          
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/archives/">
+                <i class="iconfont icon-archive-fill"></i>
+                <span>归档</span>
+              </a>
+            </li>
+          
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/categories/">
+                <i class="iconfont icon-category-fill"></i>
+                <span>分类</span>
+              </a>
+            </li>
+          
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/tags/">
+                <i class="iconfont icon-tags-fill"></i>
+                <span>标签</span>
+              </a>
+            </li>
+          
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/resource/">
+                <i class="iconfont icon-th-large"></i>
+                <span>资源</span>
+              </a>
+            </li>
+          
+        
+          
+          
+          
+          
+            <li class="nav-item dropdown">
+              <a class="nav-link dropdown-toggle" target="_self" href="javascript:;" role="button"
+                 data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                <i class="iconfont icon-cliplist"></i>
+                <span>清单</span>
+              </a>
+              <div class="dropdown-menu" aria-labelledby="navbarDropdown">
+                
+                  
+                  
+                  
+                  <a class="dropdown-item" href="/books/">
+                    <i class="iconfont icon-book"></i>
+                    <span>读书</span>
+                  </a>
+                
+                  
+                  
+                  
+                  <a class="dropdown-item" href="/movies/">
+                    <i class="iconfont icon-youtube-fill"></i>
+                    <span>电影</span>
+                  </a>
+                
+                  
+                  
+                  
+                  <a class="dropdown-item" href="/games/">
+                    <i class="iconfont icon-switch-fill"></i>
+                    <span>游戏</span>
+                  </a>
+                
+              </div>
+            </li>
+          
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/guestbook/">
+                <i class="iconfont icon-speakernotes"></i>
+                <span>留言板</span>
+              </a>
+            </li>
+          
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/links/">
+                <i class="iconfont icon-link-fill"></i>
+                <span>友链</span>
+              </a>
+            </li>
+          
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/about/">
+                <i class="iconfont icon-user-fill"></i>
+                <span>关于</span>
+              </a>
+            </li>
+          
+        
+        
+          <li class="nav-item" id="search-btn">
+            <a class="nav-link" target="_self" href="javascript:;" data-toggle="modal" data-target="#modalSearch" aria-label="Search">
+              <i class="iconfont icon-search"></i>
+            </a>
+          </li>
+          
+        
+        
+          <li class="nav-item" id="color-toggle-btn">
+            <a class="nav-link" target="_self" href="javascript:;" aria-label="Color Toggle">
+              <i class="iconfont icon-dark" id="color-toggle-icon"></i>
+            </a>
+          </li>
+        
+      </ul>
+    </div>
+  </div>
+</nav>
+
+  
+
+<div id="banner" class="banner" parallax=true
+     style="background: url('/img/bg/black.jpg') no-repeat center center; background-size: cover;">
+  <div class="full-bg-img">
+    <div class="mask flex-center" style="background-color: rgba(0, 0, 0, 0.3)">
+      <div class="banner-text text-center fade-in-up">
+        <div class="h2">
+          
+            <span id="subtitle" data-typed-text="论文阅读 | Patronus：High-Performance and Protective Remote Memory"></span>
+          
+        </div>
+
+        
+          
+  <div class="mt-3">
+    
+    
+      <span class="post-meta">
+        <i class="iconfont icon-date-fill" aria-hidden="true"></i>
+        <time datetime="2023-05-06 19:59" pubdate>
+          2023年5月6日 晚上
+        </time>
+      </span>
+    
+  </div>
+
+  <div class="mt-1">
+    
+      <span class="post-meta mr-2">
+        <i class="iconfont icon-chart"></i>
+        
+          4.5k 字
+        
+      </span>
+    
+
+    
+
+    
+    
+      
+        <span id="busuanzi_container_page_pv" style="display: none">
+          <i class="iconfont icon-eye" aria-hidden="true"></i>
+          <span id="busuanzi_value_page_pv"></span> 次
+        </span>
+        
+      
+    
+  </div>
+
+
+        
+      </div>
+
+      
+    </div>
+  </div>
+</div>
+
+</div>
+
+  </header>
+
+  <main>
+    
+      
+
+<div class="container-fluid nopadding-x">
+  <div class="row nomargin-x">
+    <div class="side-col d-none d-lg-block col-lg-2">
+      
+
+    </div>
+
+    <div class="col-lg-8 nopadding-x-md">
+      <div class="container nopadding-x-md" id="board-ctn">
+        <div id="board">
+          <article class="post-content mx-auto">
+            <!-- SEO header -->
+            <h1 style="display: none">论文阅读 | Patronus：High-Performance and Protective Remote Memory</h1>
+            
+            
+              <div class="markdown-body">
+                
+                <p>这篇文章发表于FAST'23，是<a target="_blank" rel="noopener" href="http://storage.cs.tsinghua.edu.cn/home-ch/">清华大学存储研究组</a>提出的工作。文章介绍了他们基于RDMA并通过软件协同设计实现的高性能且有保护的远程内存。</p>
+<span id="more"></span>
+<p><em>Paper Link</em>：<a target="_blank" rel="noopener" href="https://www.usenix.org/conference/fast23/presentation/yan">https://www.usenix.org/conference/fast23/presentation/yan</a></p>
+<h1 id="背景和动机">背景和动机</h1>
+<p><strong>远程内存（Remote Memory, RM）架构</strong>是指将内存和CPU分离为两个独立的资源池（计算节点CN和内存节点MN）的架构，CN能够根据需要动态地从MN获得内存资源，这样的架构具有高内存利用率和高效内存共享的特点。得益于RDMA网络的广泛部署，它允许CN以one-side和低延迟的方式访问远程内存，目前许多数据中心都部署了RM架构。</p>
+<p>但是实用的RM系统仍有一个需求未解决：<strong>远程内存保护（Remote Memory Protection）</strong>。不受保护的内存会面临非法访问的风险，可能导致数据损坏或泄漏。同时实现内存保护和高性能的RM系统是比较困难的，目前的RM系统都无保护地全部或以粗粒度暴露内存。</p>
+<h1 id="设计目标">设计目标</h1>
+<p>考虑到RM系统是作为基础设施建设的，它的性能决定了上层工作负载的性能上限。因此具备保护的RM系统的设计目标大体可以概括为以下三点：</p>
+<p><strong><em>G#1</em></strong>：工作负载在峰值时会有大量的内存权限请求，因此系统必须要做到<strong>高性能低延迟</strong>，避免成为实际使用时的瓶颈。<br />
+<strong><em>G#2</em></strong>：客户端可能会在持有独占权限时发生故障，这会影响整个系统运行。因此，系统必须要能<strong>快速反应客户端故障</strong>。<br />
+<strong><em>G#3</em></strong>：非法访问会导致QP进入错误状态，而拒绝接收RDMA请求，无法继续工作。这种中断可能会给共享同一QP的其它客户端造成影响。因此，系统需要一种保证在<strong>非法访问发生下保持性能</strong>的机制。</p>
+<h1 id="现存方案简述">现存方案简述</h1>
+<figure>
+<img src="Fig1-protection_releated_operations_latency.jpg" srcset="/img/loading.gif" lazyload alt="" /><figcaption>Fig.1 RDMA各保护相关操作延迟</figcaption>
+</figure>
+<figure>
+<img src="Table1-existing_solution.jpg" srcset="/img/loading.gif" lazyload alt="" /><figcaption>Table1 现有保护比较</figcaption>
+</figure>
+<p>现有的RM系统保护方案大体可以分为如表格所示的几类：</p>
+<ul>
+<li><strong>Two-sided</strong>指的是在访问远程内存时完全使用RDMA的two-sided verbs，但这并不适用于RM架构，因为这需要超出内存节点所能提供的计算能力。<br />
+</li>
+<li><strong>MR</strong>指的是完全使用RDMA的MR进行内存保护，具体而言是对每个权限请求都相应注册一块MR并公开给客户端。然而，MR相关操作开销巨大，延迟非常高（如Fig1），且会随着内存需求变大而提升，无法满足 <strong><em>G#1</em></strong> 。而且，MR也无法感知客户端故障和处理QP错误，因此也无法满足 <strong><em>G#2</em></strong> 和 <strong><em>G#3</em></strong> 。</li>
+<li><strong>QP</strong>指的是基于QP进行内存保护，具体而言是通过设定QP到不同状态从而达到不同的权限限制。但是这样的方案只能达到以通道为粒度的内存保护，而无法做到字节粒度的保护，并且修改QP状态也需要极大开销（如Fig1），无法满足 <strong><em>G#1</em></strong> 。同样，这种方案也无法感知客户端故障和处理QP错误，因此也无法满足 <strong><em>G#2</em></strong> 和 <strong><em>G#3</em></strong> 。</li>
+<li><strong>MW</strong>则提供了更快更灵活的bind操作，延迟极低且固定不变，满足了 <strong><em>G#1</em></strong> 。但它仍然无法满足 <strong><em>G#2</em></strong> 和 <strong><em>G#3</em></strong> ，因此需要软件协同设计满足这些机制。</li>
+</ul>
+<p>（如果对以上名词及其机制还没有足够了解，可以参考<a target="_blank" rel="noopener" href="https://zhuanlan.zhihu.com/p/142175657">RDMA操作类型</a>、<a target="_blank" rel="noopener" href="https://zhuanlan.zhihu.com/p/156975042">MR</a>、<a target="_blank" rel="noopener" href="https://zhuanlan.zhihu.com/p/195757767">QP</a>、<a target="_blank" rel="noopener" href="https://zhuanlan.zhihu.com/p/353590347">MW</a>）</p>
+<h1 id="设计概览">设计概览</h1>
+<p>文章提出了名为Patronus的高性能有保护的RM系统，设计思路可以概括如下：</p>
+<ul>
+<li>Patronus充分利用了RDMA的Memory Window（MW）机制减少OS内核和RNIC开销，而非直接使用开销极高的Memory Region（MR）机制，并协同软件设计进一步减少MW操作次数，以达成高性能的目标。</li>
+<li>Patronus引入租约机制，用于快速反应客户端故障，避免故障客户端无法释放内存资源而阻塞系统。同时为了进一步节省内存池有限的计算资源，将租约信息在保证保护的前提下委托给客户端管理。</li>
+<li>Patronus会让客户端和内存池准备额外的空闲QP，用于在QP进入错误状态时快速替换，从而隐藏中断，避免QP损坏带来的修复延迟。</li>
+</ul>
+<h1 id="系统设计">系统设计</h1>
+<h2 id="接口">接口</h2>
+<figure>
+<img src="Table2-interface.jpg" srcset="/img/loading.gif" lazyload alt="" /><figcaption>Table2 系统接口</figcaption>
+</figure>
+<p>Patronus系统的API如表2所示：</p>
+<ul>
+<li><strong>权限开始</strong> ：客户端获取内存权限可以分为两种情况。一种是通过 <em>allocate</em> 接口，分配一块新的内存；一种是通过 <em>acquire</em> 接口，尝试获取一块已知区域的内存访问权限。两个接口都会对MN发起RPC，MN相应绑定MW（bind）到分配好的或指定的内存区域上，随后返回权限凭证 <em>Perm</em> 给客户端。请求参数包括了访问模式（读/写）和所有权（共享/独占）以及期望时长。对于所有权冲突的请求，Patronus会延迟赋予权限。<br />
+</li>
+<li><strong>权限延长</strong> ：客户端通过 <em>extend</em> 接口延长权限生命，在后文中会提到这是通过RDMA的one-sided verbs实现的。这样可以避免频繁重新获取同一区域的内存权限，提高效率。<br />
+</li>
+<li><strong>权限结束</strong> ：权限会在租期到达的时候结束，也可以通过 <em>revoke</em> 接口显式地结束权限，这也是通过RPC实现的。无论是哪种情况，MN都会在结束权限时将对应的MW解绑（unbind）。<br />
+</li>
+<li><strong>数据路径</strong> ：Patronus完全使用RDMA的one-sided verbs进行数据操作。</li>
+</ul>
+<h2 id="系统结构">系统结构</h2>
+<figure>
+<img src="Fig2-architecture.jpg" srcset="/img/loading.gif" lazyload alt="" /><figcaption>Fig.2 系统结构</figcaption>
+</figure>
+<p>Patronus提供了一个CN上客户端使用的库和MN上运行的管理进程。在MN上，内存被分为了两部分：<strong>header</strong>池（≤0.02%）和<strong>buffer</strong>池。header是负载存放权限元数据的结构，buffer则是真正供客户端访问的内存。</p>
+<figure>
+<img src="Fig3-format_of_32B_header.jpg" srcset="/img/loading.gif" lazyload alt="" /><figcaption>Fig.3 header格式</figcaption>
+</figure>
+<p>header的组成如Fig.3所示，它主要包括两方面信息：资源信息和租约信息。Patronus使用header的地址作为客户端访问MN上内存的凭证。</p>
+<p>每当客户端调用接口获取权限时，管理进程会从header池里分配一个header，随后绑定<strong>两个</strong>MW到buffer和header上，绑定buffer自然是为了访问申请好的内存区域，绑定header则是为了后面会说到的CN协同租约延长。内存分配由不同object大小的slab分配器进行管理。为了检测快过期的权限，管理进程会定期轮询，找到到期的权限，并进行解绑回收操作。</p>
+<h2 id="cn协同租约延长">CN协同租约延长</h2>
+<p>一个朴素的租约延长方式是客户端通过RPC通知MN上的管理进程延长租期。但是，这会造成巨大的开销，MN上的计算资源很少，无法支持这种方式。因此，Patronus采用的是CN协同的方式进行租约延长。具体而言就是为header的lifetime字段也绑定上一个MW，将其暴露给客户端，这样客户端就可以通过RDMA的one-sided verb去修改MN上保存的租期，不会造成极大开销。</p>
+<p>但是这样做又可能引入饥饿问题：客户端可以将lifetime设置得极大或者连续修改租期，使其长久掌握对应内存区域的所有权，从而阻塞其它客户端的请求。因此，Patronus设定了两个规则防止这种情况发生：<br />
+1. lifetime不能超出一个预定义的最大值，当管理进程发现已经超时的权限时，会将其强制失效。<br />
+2. 把客户端修改lifetime的操作从RDMA_WRITE换成RDMA_CAS，管理进程可以通过将lifetime置0来告知客户端无法再延长租期。</p>
+<h2 id="降低开销">降低开销</h2>
+<p>虽然MW相关操作的开销相较于MR相关操作已经有了显著降低，但是仍然不够。为了应对峰值请求，需要软件协同设计进一步降低开销。</p>
+<h3 id="利用成对的相反操作">利用成对的相反操作</h3>
+<figure>
+<img src="Fig4-handover.jpg" srcset="/img/loading.gif" lazyload alt="" /><figcaption>Fig.4 MW handover技术</figcaption>
+</figure>
+<p>系统每时每刻都会有内存分配和回收，相应不断有MW的绑定和解绑操作进行。理想状态下，MW的绑定和解绑操作各占一半。遵循这一经验事实，Patronus会合并每一对绑定和解绑操作变成一个重绑定操作（rebind）。</p>
+<p>这一技术不会引入额外的代价。第一，管理进程不会为了合并操作而刻意等待，不会因此造成延迟；第二，客户端的请求本身会由RNIC进行batch，硬件支持下不会引入额外的batch开销，更应说handover充分利用了RNIC的这一特性。</p>
+<h3 id="延迟解绑">延迟解绑</h3>
+<p>对于那些被解除分配的内存区域，如果它不被马上重新使用的话，那么可以延迟解绑相应的MW。这样可以降低被错误访问从而造成错误状态引入的概率。header就是延迟解绑很好的对象，一般来说header池里有足够多的空闲header，因此header的重新使用需求不高，对header的解绑可以延迟；而如果buffer池内仍然有足够多的空闲内存空间，那么buffer的解绑也可以延迟。</p>
+<h3 id="充分利用连续性">充分利用连续性</h3>
+<p>可以观察到，如果两块内存区域地址连续并且有着共享相同的租期，那么两个MW可以合并为一个。直观地说，这种情况发生的概率似乎非常小，但是可以人为构造出来。在处理 <em>allocate</em> 请求时，管理进程会将header和buffer一同分配，也就是在buffer前多分配32B放置header。文章对 <strong><em>Perm</em></strong> 的编码设计特意将lifetime字段放在了末尾，这样它和buffer构成了连续的内存空间，使用一个MW绑定即可。</p>
+<h2 id="非法访问隔离">非法访问隔离</h2>
+<p>虽然在MW的限制下，非法访问不会导致内存损坏，但是依然会不可避免得导致QP进入错误状态而无法工作，要修复QP需要通过Modify QP State的操作。但是从Fig.1中可以看到，这一操作的延迟相当高。因此，Patronus不选择修复QP，而是通过替换QP的方式隐藏错误。</p>
+<p>Patronus准备了多个空闲的备用QP用于替换。每个客户端会被赋予一个虚拟的QPN，同时Patronus会维护一个虚拟QPN到真实QPN的映射表。当QP错误发生时，Patronus会透明地选择一个空闲QP替换，并且更改QPN映射表，由此使得错误被隐藏，系统可以继续运行。这种方式的实现得益于MW不需要和QP关联的特性，并且当QP没有被使用时，它不会占用RNIC的稀缺资源，备用QP仅需要一点点内存作为代价，这是值得的。</p>
+<h2 id="其它实现细节">其它实现细节</h2>
+<ul>
+<li><p><strong>MW池</strong><br />
+尽管MW的绑定和解绑操作开销不高，但是它的创建仍然有较高的延迟（大约100微妙）。因此Patronus维护了一个MW池，避免该延迟出现在关键请求路径上。</p></li>
+<li><p><strong>处理二次失效</strong><br />
+ABA问题可能会导致权限双重失效。具体而言，当过期的RPC尝试定位一个已经被重用的权限header时，就会出现ABA问题。为了解决这个问题，Patronus会在每个RPC内附加 <strong><em>Perm</em></strong> 的start time字段，管理进程会过滤掉所有start time不匹配的RPC。</p></li>
+</ul>
+<h1 id="用例和实验">用例和实验</h1>
+<p>这个直接看论文吧。</p>
+<h1 id="笔者的一些想法和疑问">笔者的一些想法和疑问</h1>
+<ol type="1">
+<li><p>从<a href="#利用成对的相反操作">利用成对的相反操作</a>中用到了rebind操作和<a href="#非法访问隔离">非法访问隔离</a>的QP切换可以推测出来，文章使用的是Type 1的MW。Type 1 MW不需要和QP绑定，而是通过和PD关联，间接与QP关联。并且Type 1 MW支持直接换绑，绑定新的内存区域前不需要显示地解绑旧区域，换绑后旧的R_Key直接失效。此外，文中所说的<a href="#其它实现细节">MW池</a>的实现也得益于Type 1 MW支持零长度绑定。</p></li>
+<li><p>内存区域的权限有最长租约的限制，这是否意味着这样的系统不适用于长期持续运行的进程使用，例如内存数据库？</p></li>
+<li><p>合并成对bind和unbind的操作，以及延迟解绑，这两个优化是不是相互矛盾的存在？</p></li>
+<li><p>为了实现内存连续将header和buffer合并，那么是不是就不存在header池了？</p></li>
+</ol>
+<p>总而言之，我个人认为这篇文章还是有很多没交代清楚的地方。</p>
+
+                
+              </div>
+            
+            <hr/>
+            <div>
+              <div class="post-metas my-3">
+  
+    <div class="post-meta mr-3 d-flex align-items-center">
+      <i class="iconfont icon-category"></i>
+      
+
+<span class="category-chains">
+  
+  
+    
+      <span class="category-chain">
+        
+  <a href="/categories/%E8%AE%BA%E6%96%87%E9%98%85%E8%AF%BB/" class="category-chain-item">论文阅读</a>
+  
+  
+
+      </span>
+    
+  
+</span>
+
+    </div>
+  
+  
+    <div class="post-meta">
+      <i class="iconfont icon-tags"></i>
+      
+        <a href="/tags/RDMA/">#RDMA</a>
+      
+        <a href="/tags/%E8%AE%BA%E6%96%87%E9%98%85%E8%AF%BB/">#论文阅读</a>
+      
+        <a href="/tags/Remote-Memory/">#Remote Memory</a>
+      
+    </div>
+  
+</div>
+
+
+              
+  
+
+  <div class="license-box my-3">
+    <div class="license-title">
+      <div>论文阅读 | Patronus：High-Performance and Protective Remote Memory</div>
+      <div>http://ztorchan.com/2023/05/06/readpaper-Patronus/</div>
+    </div>
+    <div class="license-meta">
+      
+        <div class="license-meta-item">
+          <div>作者</div>
+          <div>ztorchan</div>
+        </div>
+      
+      
+        <div class="license-meta-item license-meta-date">
+          <div>发布于</div>
+          <div>2023年5月6日</div>
+        </div>
+      
+      
+      
+        <div class="license-meta-item">
+          <div>许可协议</div>
+          <div>
+            
+              
+              
+                <a target="_blank" href="https://creativecommons.org/licenses/by/4.0/">
+                  <span class="hint--top hint--rounded" aria-label="BY - 署名">
+                    <i class="iconfont icon-by"></i>
+                  </span>
+                </a>
+              
+            
+          </div>
+        </div>
+      
+    </div>
+    <div class="license-icon iconfont"></div>
+  </div>
+
+
+
+              
+                <div class="post-prevnext my-3">
+                  <article class="post-prev col-6">
+                    
+                    
+                      <a href="/2023/05/07/single-node-k3s-install/" title="单机部署K3s">
+                        <i class="iconfont icon-arrowleft"></i>
+                        <span class="hidden-mobile">单机部署K3s</span>
+                        <span class="visible-mobile">上一篇</span>
+                      </a>
+                    
+                  </article>
+                  <article class="post-next col-6">
+                    
+                    
+                      <a href="/2023/05/05/build-blog/" title="Hexo博客重搭建">
+                        <span class="hidden-mobile">Hexo博客重搭建</span>
+                        <span class="visible-mobile">下一篇</span>
+                        <i class="iconfont icon-arrowright"></i>
+                      </a>
+                    
+                  </article>
+                </div>
+              
+            </div>
+
+            
+          </article>
+        </div>
+      </div>
+    </div>
+
+    <div class="side-col d-none d-lg-block col-lg-2">
+      
+  <aside class="sidebar" style="margin-left: -1rem">
+    <div id="toc">
+  <p class="toc-header">
+    <i class="iconfont icon-list"></i>
+    <span>目录</span>
+  </p>
+  <div class="toc-body" id="toc-body"></div>
+</div>
+
+
+
+  </aside>
+
+
+    </div>
+  </div>
+</div>
+
+
+
+
+
+  
+
+
+
+  
+
+
+
+  
+
+
+
+  
+
+
+
+  
+
+
+
+
+
+
+
+    
+
+    
+      <a id="scroll-top-button" aria-label="TOP" href="#" role="button">
+        <i class="iconfont icon-arrowup" aria-hidden="true"></i>
+      </a>
+    
+
+    
+      <div class="modal fade" id="modalSearch" tabindex="-1" role="dialog" aria-labelledby="ModalLabel"
+     aria-hidden="true">
+  <div class="modal-dialog modal-dialog-scrollable modal-lg" role="document">
+    <div class="modal-content">
+      <div class="modal-header text-center">
+        <h4 class="modal-title w-100 font-weight-bold">搜索</h4>
+        <button type="button" id="local-search-close" class="close" data-dismiss="modal" aria-label="Close">
+          <span aria-hidden="true">&times;</span>
+        </button>
+      </div>
+      <div class="modal-body mx-3">
+        <div class="md-form mb-5">
+          <input type="text" id="local-search-input" class="form-control validate">
+          <label data-error="x" data-success="v" for="local-search-input">关键词</label>
+        </div>
+        <div class="list-group" id="local-search-result"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+    
+
+    
+  </main>
+
+  <footer>
+    <div class="footer-inner">
+  
+  
+  
+  
+</div>
+
+  </footer>
+
+  <!-- Scripts -->
+  
+  <script  src="https://lib.baomitu.com/nprogress/0.2.0/nprogress.min.js" ></script>
+  <link  rel="stylesheet" href="https://lib.baomitu.com/nprogress/0.2.0/nprogress.min.css" />
+
+  <script>
+    NProgress.configure({"showSpinner":false,"trickleSpeed":100})
+    NProgress.start()
+    window.addEventListener('load', function() {
+      NProgress.done();
+    })
+  </script>
+
+
+<script  src="https://lib.baomitu.com/jquery/3.6.0/jquery.min.js" ></script>
+<script  src="https://lib.baomitu.com/twitter-bootstrap/4.6.1/js/bootstrap.min.js" ></script>
+<script  src="/js/events.js" ></script>
+<script  src="/js/plugins.js" ></script>
+
+
+  <script  src="https://lib.baomitu.com/typed.js/2.0.12/typed.min.js" ></script>
+  <script>
+    (function (window, document) {
+      var typing = Fluid.plugins.typing;
+      var subtitle = document.getElementById('subtitle');
+      if (!subtitle || !typing) {
+        return;
+      }
+      var text = subtitle.getAttribute('data-typed-text');
+      
+        typing(text);
+      
+    })(window, document);
+  </script>
+
+
+
+
+  
+    <script  src="/js/img-lazyload.js" ></script>
+  
+
+
+
+
+  
+<script>
+  Fluid.utils.createScript('https://lib.baomitu.com/tocbot/4.18.2/tocbot.min.js', function() {
+    var toc = jQuery('#toc');
+    if (toc.length === 0 || !window.tocbot) { return; }
+    var boardCtn = jQuery('#board-ctn');
+    var boardTop = boardCtn.offset().top;
+
+    window.tocbot.init(Object.assign({
+      tocSelector     : '#toc-body',
+      contentSelector : '.markdown-body',
+      linkClass       : 'tocbot-link',
+      activeLinkClass : 'tocbot-active-link',
+      listClass       : 'tocbot-list',
+      isCollapsedClass: 'tocbot-is-collapsed',
+      collapsibleClass: 'tocbot-is-collapsible',
+      scrollSmooth    : true,
+      includeTitleTags: true,
+      headingsOffset  : -boardTop,
+    }, CONFIG.toc));
+    if (toc.find('.toc-list-item').length > 0) {
+      toc.css('visibility', 'visible');
+    }
+
+    Fluid.events.registerRefreshCallback(function() {
+      if ('tocbot' in window) {
+        tocbot.refresh();
+        var toc = jQuery('#toc');
+        if (toc.length === 0 || !tocbot) {
+          return;
+        }
+        if (toc.find('.toc-list-item').length > 0) {
+          toc.css('visibility', 'visible');
+        }
+      }
+    });
+  });
+</script>
+
+
+  <script src=https://lib.baomitu.com/clipboard.js/2.0.11/clipboard.min.js></script>
+
+  <script>Fluid.plugins.codeWidget();</script>
+
+
+  
+<script>
+  Fluid.utils.createScript('https://lib.baomitu.com/anchor-js/4.3.1/anchor.min.js', function() {
+    window.anchors.options = {
+      placement: CONFIG.anchorjs.placement,
+      visible  : CONFIG.anchorjs.visible
+    };
+    if (CONFIG.anchorjs.icon) {
+      window.anchors.options.icon = CONFIG.anchorjs.icon;
+    }
+    var el = (CONFIG.anchorjs.element || 'h1,h2,h3,h4,h5,h6').split(',');
+    var res = [];
+    for (var item of el) {
+      res.push('.markdown-body > ' + item.trim());
+    }
+    if (CONFIG.anchorjs.placement === 'left') {
+      window.anchors.options.class = 'anchorjs-link-left';
+    }
+    window.anchors.add(res.join(', '));
+
+    Fluid.events.registerRefreshCallback(function() {
+      if ('anchors' in window) {
+        anchors.removeAll();
+        var el = (CONFIG.anchorjs.element || 'h1,h2,h3,h4,h5,h6').split(',');
+        var res = [];
+        for (var item of el) {
+          res.push('.markdown-body > ' + item.trim());
+        }
+        if (CONFIG.anchorjs.placement === 'left') {
+          anchors.options.class = 'anchorjs-link-left';
+        }
+        anchors.add(res.join(', '));
+      }
+    });
+  });
+</script>
+
+
+  
+<script>
+  Fluid.utils.createScript('https://lib.baomitu.com/fancybox/3.5.7/jquery.fancybox.min.js', function() {
+    Fluid.plugins.fancyBox();
+  });
+</script>
+
+
+  <script>Fluid.plugins.imageCaption();</script>
+
+  <script  src="/js/local-search.js" ></script>
+
+  <script defer src="https://busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js" ></script>
+
+
+
+
+
+<!-- 主题的启动项，将它保持在最底部 -->
+<!-- the boot of the theme, keep it at the bottom -->
+<script  src="/js/boot.js" ></script>
+
+
+  
+
+  <noscript>
+    <div class="noscript-warning">博客在允许 JavaScript 运行的环境下浏览效果更佳</div>
+  </noscript>
+</body>
+</html>

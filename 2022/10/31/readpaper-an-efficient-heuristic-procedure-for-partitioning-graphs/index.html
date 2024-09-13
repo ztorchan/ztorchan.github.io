@@ -1,0 +1,896 @@
+
+
+<!DOCTYPE html>
+<html lang="zh-CN" data-default-color-scheme=light>
+
+
+
+<head>
+  <meta charset="UTF-8">
+  <link rel="apple-touch-icon" sizes="76x76" href="/img/icon/t.png">
+  <link rel="icon" href="/img/icon/t.png">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, shrink-to-fit=no">
+  <meta http-equiv="x-ua-compatible" content="ie=edge">
+  
+  <meta name="theme-color" content="#2f4154">
+  <meta name="author" content="ztorchan">
+  <meta name="keywords" content="">
+  
+    <meta name="description" content="今天要读的论文是大名鼎鼎的图划分算法——KL算法的原文：An Efficient Heuristic Procedure for Partitioning Graphs">
+<meta property="og:type" content="article">
+<meta property="og:title" content="论文阅读 | KL算法：An Efficient Heuristic Procedure for Partitioning Graphs">
+<meta property="og:url" content="http://ztorchan.com/2022/10/31/readpaper-an-efficient-heuristic-procedure-for-partitioning-graphs/index.html">
+<meta property="og:site_name" content="ZTorchan">
+<meta property="og:description" content="今天要读的论文是大名鼎鼎的图划分算法——KL算法的原文：An Efficient Heuristic Procedure for Partitioning Graphs">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="http://ztorchan.com/2022/10/31/readpaper-an-efficient-heuristic-procedure-for-partitioning-graphs/Fig1.jpg">
+<meta property="og:image" content="http://ztorchan.com/2022/10/31/readpaper-an-efficient-heuristic-procedure-for-partitioning-graphs/Fig2.jpg">
+<meta property="og:image" content="http://ztorchan.com/2022/10/31/readpaper-an-efficient-heuristic-procedure-for-partitioning-graphs/Fig3.jpg">
+<meta property="og:image" content="http://ztorchan.com/2022/10/31/readpaper-an-efficient-heuristic-procedure-for-partitioning-graphs/Fig4.jpg">
+<meta property="article:published_time" content="2022-10-31T06:43:07.000Z">
+<meta property="article:modified_time" content="2024-09-12T14:44:58.503Z">
+<meta property="article:author" content="ztorchan">
+<meta property="article:tag" content="论文阅读">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="http://ztorchan.com/2022/10/31/readpaper-an-efficient-heuristic-procedure-for-partitioning-graphs/Fig1.jpg">
+  
+  
+    <meta name="referrer" content="no-referrer-when-downgrade">
+  
+  
+  <title>论文阅读 | KL算法：An Efficient Heuristic Procedure for Partitioning Graphs - ZTorchan</title>
+
+  <link  rel="stylesheet" href="https://lib.baomitu.com/twitter-bootstrap/4.6.1/css/bootstrap.min.css" />
+
+
+
+  <link  rel="stylesheet" href="https://lib.baomitu.com/github-markdown-css/4.0.0/github-markdown.min.css" />
+
+  <link  rel="stylesheet" href="https://lib.baomitu.com/hint.css/2.7.0/hint.min.css" />
+
+  <link  rel="stylesheet" href="https://lib.baomitu.com/fancybox/3.5.7/jquery.fancybox.min.css" />
+
+
+
+<!-- 主题依赖的图标库，不要自行修改 -->
+<!-- Do not modify the link that theme dependent icons -->
+
+<link rel="stylesheet" href="//at.alicdn.com/t/font_1749284_hj8rtnfg7um.css">
+
+
+
+<link rel="stylesheet" href="//at.alicdn.com/t/font_1736178_lbnruvf0jn.css">
+
+
+<link  rel="stylesheet" href="/css/main.css" />
+
+
+  <link id="highlight-css" rel="stylesheet" href="/css/highlight.css" />
+  
+    <link id="highlight-css-dark" rel="stylesheet" href="/css/highlight-dark.css" />
+  
+
+
+
+
+  <script id="fluid-configs">
+    var Fluid = window.Fluid || {};
+    Fluid.ctx = Object.assign({}, Fluid.ctx)
+    var CONFIG = {"hostname":"ztorchan.com","root":"/","version":"1.9.4","typing":{"enable":true,"typeSpeed":50,"cursorChar":"_","loop":false,"scope":[]},"anchorjs":{"enable":true,"element":"h1,h2,h3,h4,h5,h6","placement":"left","visible":"hover","icon":""},"progressbar":{"enable":true,"height_px":3,"color":"#29d","options":{"showSpinner":false,"trickleSpeed":100}},"code_language":{"enable":true,"default":"TEXT"},"copy_btn":true,"image_caption":{"enable":true},"image_zoom":{"enable":true,"img_url_replace":["",""]},"toc":{"enable":true,"placement":"right","headingSelector":"h1,h2,h3,h4,h5,h6","collapseDepth":0},"lazyload":{"enable":true,"loading_img":"/img/loading.gif","onlypost":false,"offset_factor":2},"web_analytics":{"enable":true,"follow_dnt":false,"baidu":null,"google":null,"gtag":null,"tencent":{"sid":null,"cid":null},"woyaola":null,"cnzz":null,"leancloud":{"app_id":null,"app_key":null,"server_url":null,"path":"window.location.pathname","ignore_local":false}},"search_path":"/local-search.xml"};
+
+    if (CONFIG.web_analytics.follow_dnt) {
+      var dntVal = navigator.doNotTrack || window.doNotTrack || navigator.msDoNotTrack;
+      Fluid.ctx.dnt = dntVal && (dntVal.startsWith('1') || dntVal.startsWith('yes') || dntVal.startsWith('on'));
+    }
+  </script>
+  <script  src="/js/utils.js" ></script>
+  <script  src="/js/color-schema.js" ></script>
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+
+
+  
+<meta name="generator" content="Hexo 6.3.0"></head>
+
+
+<body>
+  
+
+  <header>
+    
+
+<div class="header-inner" style="height: 35vh;">
+  <nav id="navbar" class="navbar fixed-top  navbar-expand-lg navbar-dark scrolling-navbar">
+  <div class="container">
+    <a class="navbar-brand" href="/">
+      <strong>ZTorchan</strong>
+    </a>
+
+    <button id="navbar-toggler-btn" class="navbar-toggler" type="button" data-toggle="collapse"
+            data-target="#navbarSupportedContent"
+            aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
+      <div class="animated-icon"><span></span><span></span><span></span></div>
+    </button>
+
+    <!-- Collapsible content -->
+    <div class="collapse navbar-collapse" id="navbarSupportedContent">
+      <ul class="navbar-nav ml-auto text-center">
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/">
+                <i class="iconfont icon-home-fill"></i>
+                <span>首页</span>
+              </a>
+            </li>
+          
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/archives/">
+                <i class="iconfont icon-archive-fill"></i>
+                <span>归档</span>
+              </a>
+            </li>
+          
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/categories/">
+                <i class="iconfont icon-category-fill"></i>
+                <span>分类</span>
+              </a>
+            </li>
+          
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/tags/">
+                <i class="iconfont icon-tags-fill"></i>
+                <span>标签</span>
+              </a>
+            </li>
+          
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/resource/">
+                <i class="iconfont icon-th-large"></i>
+                <span>资源</span>
+              </a>
+            </li>
+          
+        
+          
+          
+          
+          
+            <li class="nav-item dropdown">
+              <a class="nav-link dropdown-toggle" target="_self" href="javascript:;" role="button"
+                 data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                <i class="iconfont icon-cliplist"></i>
+                <span>清单</span>
+              </a>
+              <div class="dropdown-menu" aria-labelledby="navbarDropdown">
+                
+                  
+                  
+                  
+                  <a class="dropdown-item" href="/books/">
+                    <i class="iconfont icon-book"></i>
+                    <span>读书</span>
+                  </a>
+                
+                  
+                  
+                  
+                  <a class="dropdown-item" href="/movies/">
+                    <i class="iconfont icon-youtube-fill"></i>
+                    <span>电影</span>
+                  </a>
+                
+                  
+                  
+                  
+                  <a class="dropdown-item" href="/games/">
+                    <i class="iconfont icon-switch-fill"></i>
+                    <span>游戏</span>
+                  </a>
+                
+              </div>
+            </li>
+          
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/guestbook/">
+                <i class="iconfont icon-speakernotes"></i>
+                <span>留言板</span>
+              </a>
+            </li>
+          
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/links/">
+                <i class="iconfont icon-link-fill"></i>
+                <span>友链</span>
+              </a>
+            </li>
+          
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/about/">
+                <i class="iconfont icon-user-fill"></i>
+                <span>关于</span>
+              </a>
+            </li>
+          
+        
+        
+          <li class="nav-item" id="search-btn">
+            <a class="nav-link" target="_self" href="javascript:;" data-toggle="modal" data-target="#modalSearch" aria-label="Search">
+              <i class="iconfont icon-search"></i>
+            </a>
+          </li>
+          
+        
+        
+          <li class="nav-item" id="color-toggle-btn">
+            <a class="nav-link" target="_self" href="javascript:;" aria-label="Color Toggle">
+              <i class="iconfont icon-dark" id="color-toggle-icon"></i>
+            </a>
+          </li>
+        
+      </ul>
+    </div>
+  </div>
+</nav>
+
+  
+
+<div id="banner" class="banner" parallax=true
+     style="background: url('/img/bg/black.jpg') no-repeat center center; background-size: cover;">
+  <div class="full-bg-img">
+    <div class="mask flex-center" style="background-color: rgba(0, 0, 0, 0.3)">
+      <div class="banner-text text-center fade-in-up">
+        <div class="h2">
+          
+            <span id="subtitle" data-typed-text="论文阅读 | KL算法：An Efficient Heuristic Procedure for Partitioning Graphs"></span>
+          
+        </div>
+
+        
+          
+  <div class="mt-3">
+    
+    
+      <span class="post-meta">
+        <i class="iconfont icon-date-fill" aria-hidden="true"></i>
+        <time datetime="2022-10-31 14:43" pubdate>
+          2022年10月31日 下午
+        </time>
+      </span>
+    
+  </div>
+
+  <div class="mt-1">
+    
+      <span class="post-meta mr-2">
+        <i class="iconfont icon-chart"></i>
+        
+          7.9k 字
+        
+      </span>
+    
+
+    
+
+    
+    
+      
+        <span id="busuanzi_container_page_pv" style="display: none">
+          <i class="iconfont icon-eye" aria-hidden="true"></i>
+          <span id="busuanzi_value_page_pv"></span> 次
+        </span>
+        
+      
+    
+  </div>
+
+
+        
+      </div>
+
+      
+    </div>
+  </div>
+</div>
+
+</div>
+
+  </header>
+
+  <main>
+    
+      
+
+<div class="container-fluid nopadding-x">
+  <div class="row nomargin-x">
+    <div class="side-col d-none d-lg-block col-lg-2">
+      
+
+    </div>
+
+    <div class="col-lg-8 nopadding-x-md">
+      <div class="container nopadding-x-md" id="board-ctn">
+        <div id="board">
+          <article class="post-content mx-auto">
+            <!-- SEO header -->
+            <h1 style="display: none">论文阅读 | KL算法：An Efficient Heuristic Procedure for Partitioning Graphs</h1>
+            
+            
+              <div class="markdown-body">
+                
+                <p>今天要读的论文是大名鼎鼎的图划分算法——KL算法的原文：<strong><em>An Efficient Heuristic Procedure for Partitioning Graphs</em></strong></p>
+<span id="more"></span>
+<p><em>Paper Link</em>：<a target="_blank" rel="noopener" href="https://ieeexplore.ieee.org/abstract/document/6771089">https://ieeexplore.ieee.org/abstract/document/6771089</a></p>
+<h1 id="引言">引言</h1>
+<h2 id="问题是什么">问题是什么</h2>
+<figure>
+<img src="Fig1.jpg" srcset="/img/loading.gif" lazyload alt="" /><figcaption>Fig1. 问题的定义</figcaption>
+</figure>
+<p>本文所提出的是一个图划分算法。给定一个图，它的边带有权重。将的节点划分为数个子集，每个子集内包含的节点的权重之和不超过给定的最大值，同时要求划分后各子集之间的边权重之和最小。<br />
+更具体的，从数学形式上给出定义：</p>
+<figure>
+<img src="Fig2.jpg" srcset="/img/loading.gif" lazyload alt="" /><figcaption>Fig2. 数学形式定义</figcaption>
+</figure>
+<div class="note note-info">
+            <p>令<span class="math inline">\(G\)</span>为一个有<span class="math inline">\(n\)</span>个节点的图，其中第<span class="math inline">\(i\)</span>个节点的权重为<span class="math inline">\(w_i(w_i &gt; 0, i = 1, ... , n)\)</span>。令<span class="math inline">\(p\)</span>为一个正数，对于所有的<span class="math inline">\(i=1, ..., n\)</span>，有<span class="math inline">\(0 &lt; w_i \leq p\)</span>。令<span class="math inline">\(C = (c_{ij})\)</span>，其中<span class="math inline">\(i, j = 1, ..., n\)</span>，表示图<span class="math inline">\(G\)</span>的带权邻接矩阵。<br />令<span class="math inline">\(k\)</span>为一个正整数。一个对图<span class="math inline">\(G\)</span>的<span class="math inline">\(\pmb{k}\)</span><strong>路划分</strong>是<span class="math inline">\(G\)</span>的一组非空且两两不相交的子集<span class="math inline">\(v_1, ..., v_k\)</span>，且有<span class="math inline">\(\bigcup_{i=1}^{k}{v_i} = G\)</span>。一个可接受的划分需要所有子集内的节点权重之和小于<span class="math inline">\(p\)</span>，即： <span class="math display">\[\lvert{v_i}\rvert \leq p \]</span> 其中<span class="math inline">\(\lvert x \rvert\)</span>表示集合<span class="math inline">\(x\)</span>的大小，等于<span class="math inline">\(x\)</span>的所有元素大小的和。一个划分的<strong>成本（cost）</strong> 指的是<span class="math inline">\(c_{ij}\)</span>的和，其中<span class="math inline">\(i\)</span>和<span class="math inline">\(j\)</span>属于不同的子集。因此，成本是划分中所有外部成本的和，本文问题是要在满足上述要求的情况下，找到对图<span class="math inline">\(G\)</span>成本最低的最优划分方案。</p>
+          </div>
+<p>这个问题在许多显示场景下都有体现，例如将众多电子元件布置在印刷电路卡上，每个卡能容纳的电子元件有限，且卡与卡之间的连接成本较卡内连接要高，要尽可能减少电路卡之间的连接。还有一个场景是程序的分页。</p>
+<p>本文所要解决的问题就是找到<strong>一种能够满足条件且成本最小化的划分方法</strong>。事实上，这个问题等价于另外三个问题：（1）由于总的边权重的值不变，最小化外部成本相当于最大化内部成本；（2）通过改变<span class="math inline">\(c_{ij}\)</span>的符号，还可以实现最大化外部成本，同时也是最小化内部成本。</p>
+<h2 id="问题的难点">问题的难点</h2>
+<p>通常碰到这类问题，暴力穷举自然而然地就出现在我们的脑子里。但是考虑一个有<span class="math inline">\(n\)</span>个节点，且每个节点权重为1的图<span class="math inline">\(G\)</span>，将其划分为<span class="math inline">\(k\)</span>个集合，每个集合大小为<span class="math inline">\(p\)</span>（这里假设了<span class="math inline">\(kp=n\)</span>）。在这样简明的情况下，包含的情况数为： <span class="math display">\[
+\frac{1}{k!}
+\left(\begin{matrix} n \\ p \end{matrix}\right)
+\left(\begin{matrix} n-p \\ p \end{matrix}\right)
+...
+\left(\begin{matrix} 2p \\ p \end{matrix}\right)
+\left(\begin{matrix} p \\ p \end{matrix}\right)
+\]</span> 进行穷举的复杂度高的难以接受。</p>
+<p>从形式上看，这个问题也可以作为整数线性规划问题来解决，但这需要大量的约束方程来表达分区的均匀性，难度非常高。</p>
+<p>似乎任何一个寻找最优解的方法都需要大量的计算，那么放弃确切的最优解，转而以较小运算量得到一个良好解的启发式算法似乎是更好的选择。为这类问题开发启发式算法的首要目标是找到一个功能强大，而且速度快到足以能运用在实际场景下的过程。时间复杂度不仅要考虑限制在指数级下，最要好限制在平方量级之内。</p>
+<h2 id="几个失败的尝试">几个失败的尝试</h2>
+<ul>
+<li><strong>随机算法</strong>：随机地生成解决方案，保留生成过程中的最好结果。时间复杂度<span class="math inline">\(O(n)\)</span>，相当快，但由于最优解和接近最优解的解决方案很少，随机到该解决方案的概率很低，常常不能令人满意。</li>
+<li><strong>最大流最小割算法（Max Flow-Min Cut）</strong>：最大流最小割算法能够实现找到最小成本的无约束2路划分，但该算法没有限制结果子集的大小，而且难以扩展算法实现这一点。若要实现限制需要后处理，但若子集大小差异较大，则该算法不具备任何优点。</li>
+<li><strong>聚类算法</strong>：基于给定的成本矩阵识别自然聚类（natural matrix），但该方法也无法限制结果子集的大小。</li>
+<li><strong>λ-Opting</strong></li>
+</ul>
+<h1 id="路均匀划分">2路均匀划分</h1>
+<p>最简单且最具代表性的划分问题莫过于<strong>2路均匀划分</strong>了，即将给定包含了<span class="math inline">\(2n\)</span>个节点的图划分为两个分别包含了<span class="math inline">\(n\)</span>个节点的子集，且使成本最小。解决这个问题将为更一般的图划分问题提供了基础。</p>
+<h2 id="基本思路">基本思路</h2>
+<p>给定图<span class="math inline">\(S\)</span>，假定<span class="math inline">\(A^{*}\)</span>和<span class="math inline">\(B^{*}\)</span>是最佳的2路划分。设<span class="math inline">\(A\)</span>和<span class="math inline">\(B\)</span>是一对任意的2路划分。那么很显然存在<span class="math inline">\(X\subset A\)</span>，<span class="math inline">\(Y\subset B\)</span>且<span class="math inline">\(\lvert{X}\rvert=\lvert{Y}\rvert\leq\frac{n}{2}\)</span>使得<span class="math inline">\(X\)</span>和<span class="math inline">\(Y\)</span>交换后产生<span class="math inline">\(A^{*}\)</span>和<span class="math inline">\(B^{*}\)</span>。</p>
+<figure>
+<img src="Fig3.jpg" srcset="/img/loading.gif" lazyload alt="" /><figcaption>Fig3. 得到最优解</figcaption>
+</figure>
+<p>因此，为了实现目标，我们可以从任意的2路均匀划分开始，依据当前状态通过一定的算法从<span class="math inline">\(A\)</span>，<span class="math inline">\(B\)</span>中选出<span class="math inline">\(X\)</span>，<span class="math inline">\(Y\)</span>并交换，以降低外部成本。迭代交换步骤直到不可再继续降低外部成本时，我们就得到了一个局部最优解。我们在后续会表明，这个局部最优解有很大概率是全局最优解。我们可以选取多个初始划分，重复多次上述过程，得到多个局部最优解以比较。</p>
+<p>那么如何决定交换的集合<span class="math inline">\(X\)</span>和<span class="math inline">\(Y\)</span>呢？我们先给出一些定义：<br />
+<div class="note note-info">
+            <ul><li>对于任意<span class="math inline">\({a}\in{A}\)</span>，其外部成本<span class="math inline">\({E_a}=\sum_{ y\in{B} }c_{ay}\)</span>，内部成本<span class="math inline">\({I_a}=\sum_{ x\in{A} }c_{ax}\)</span>。对任意<span class="math inline">\({b}\in{B}\)</span>，同理定义<span class="math inline">\({E_b}\)</span>和<span class="math inline">\({I_b}\)</span>。</li><li>对所有<span class="math inline">\({z}\in{S}\)</span>，有<span class="math inline">\(D_{z}=E_{z}-I{z}\)</span>，<span class="math inline">\(D_{z}\)</span>为该节点的外部成本与内部成本之差</li></ul>
+          </div></p>
+<p>以上述定义为基础，我们能给出如下定理： <div class="note note-info">
+            <p><strong>定理1</strong>：对于任意的<span class="math inline">\({a}\in{A}\)</span>, <span class="math inline">\({b}\in{B}\)</span>。若<span class="math inline">\(a\)</span>和<span class="math inline">\(b\)</span>交换，那么总体的外部成本减少量为<span class="math inline">\(D_a+D_b-2c_{ab}\)</span>。</p><p><strong>证明</strong>：令<span class="math inline">\(T\)</span>为<span class="math inline">\(A\)</span>和<span class="math inline">\(B\)</span>之间除了<span class="math inline">\(a\)</span>和<span class="math inline">\(b\)</span>以外的的划分成本，则 <span class="math display">\[T=z+E_a+E_b-c_{ab}\]</span> 交换<span class="math inline">\(a\)</span>和<span class="math inline">\(b\)</span>，得到新的成本<span class="math inline">\(T&#39;\)</span>，则 <span class="math display">\[T&#39;=z+I_a+I_b+c_{ab}\]</span> 因此划分成本的减少量为 <span class="math display">\[T-T&#39;=D_a+D_b-2c_{ab}\]</span></p>
+          </div></p>
+<p>定理1就可以成为我们选择<span class="math inline">\(a\)</span>和<span class="math inline">\(b\)</span>的依据。</p>
+<h2 id="流程">流程</h2>
+<p>本节阐述进行2路划分的算法流程：<br />
+<img src="Fig4.jpg" srcset="/img/loading.gif" lazyload alt="Fig4. Phase 1 Optimal Partition" /><br />
+<div class="note note-info">
+            <ol type="1"><li>对<span class="math inline">\(S\)</span>内的每个节点计算其外部成本与内部成本之差，即<span class="math inline">\(D\)</span></li><li>选择<span class="math inline">\({a_i}\in{A}, {b_i}\in{B}\)</span>使得下式最大，则交换<span class="math inline">\({a_i}\)</span>和<span class="math inline">\({b_i}\)</span>可以获得最大的划分成本减少量。将选出的<span class="math inline">\({a_i}\)</span>和<span class="math inline">\({b_i}\)</span>称作<span class="math inline">\(a&#39;_{1}\)</span>和<span class="math inline">\(b&#39;_{1}\)</span>，并暂时搁置 <span class="math display">\[{g_1} = { D_{a_i} } + { D_{b_i} } - 2{ c_{ {a_i}{b_i} } }\]</span></li><li>对<span class="math inline">\(A-\{a_i\}\)</span>和<span class="math inline">\(B-\{b_i\}\)</span>的所有结点重新计算<span class="math inline">\(D\)</span>，计算式如下（这是假设了<span class="math inline">\(a_i\)</span>和<span class="math inline">\(b_i\)</span>已经作了交换，证明比较简单，不再说明，实在不清楚可以翻阅原文）： <span class="math display">\[D&#39;_x = D_x + 2c_{ x{a_i} } - 2c_{ x{b_i} } \quad \quad x \in A-\{a_i\}\]</span> <span class="math display">\[D&#39;_y = D_y + 2c_{ y{b_i} } - 2c_{ y{a_i} } \quad \quad x \in B-\{b_i\}\]</span></li><li>重复步骤2、3，继续挑选。要注意，每次选择出一对<span class="math inline">\(a&#39;\)</span>和<span class="math inline">\(b&#39;\)</span>，都需要将他们剔除，不再参与后续的选择。这样进行直到对整个<span class="math inline">\(S\)</span>内的所有节点都完成选择后，得到<span class="math inline">\(a&#39;_1\)</span>和<span class="math inline">\(b&#39;_1\)</span>、...、<span class="math inline">\(a&#39;_n\)</span>和<span class="math inline">\(b&#39;_n\)</span>的节点对，与之对应的有<span class="math inline">\(g_1\)</span>、...、<span class="math inline">\(g_n\)</span>。</li><li><span class="math inline">\(g_1\)</span>、...、<span class="math inline">\(g_n\)</span>不一定全都是正数，选择一个值<span class="math inline">\(k\)</span>，使得<span class="math inline">\(\sum_{i=1}^{k}{g_i} = G\)</span>最大。此时，若<span class="math inline">\(G&gt;0\)</span>，交换<span class="math inline">\(X = \{ a&#39;_1, ..., a&#39;_k\}\)</span>和<span class="math inline">\(Y = \{ b&#39;_1, ..., b&#39;_k \}\)</span>可以使划分成本减小<span class="math inline">\(G\)</span>。</li><li>此时得到一个新的划分，随后重新回到步骤1进行下一轮交换。重复这个过程直到<span class="math inline">\(G=0\)</span>，此时便得到了一个局部最优划分。</li></ol>
+          </div></p>
+<p>上述算法流程可以从一个初始划分找到它的局部最优化分，我们称之为<strong>Phase 1 Optimal Partition</strong>。我们可以选择多从几个随机初始划分得到它们的Phase 1 Optimal Partition，或者进一步地优化Phase 1 Optimal Partition。</p>
+<h2 id="方法的有效性">方法的有效性</h2>
+<p>Phase 1 Optimal Partition有几个特点：</p>
+<ol type="1">
+<li>寻常的方法是要交换<span class="math inline">\(A\)</span>和<span class="math inline">\(B\)</span>中的<span class="math inline">\(λ\)</span>对顶点，这个<span class="math inline">\(λ\)</span>是预先确定的数值。这会导致<span class="math inline">\(λ\)</span>过小时效果不佳，但若增大<span class="math inline">\(λ\)</span>会导致计算量急剧上升。而Phase 1 Optimal Partition的<span class="math inline">\(λ\)</span>是动态变化的，尽可能地选择<span class="math inline">\(λ\)</span>使得交换带来的提升足够大，同时计算速度也足够快。</li>
+<li>前面有提到，并非每个<span class="math inline">\(g_i\)</span>都是正数，但算法流程不会在遇到负的<span class="math inline">\(g_i\)</span>时就终止。这就是说，Phase 1 Optimal Partition能找到一对交换集合，交换集合中的几个元素可能会导致划分成本的增大，但交换整个集合能够带来足够大的净收益。</li>
+</ol>
+<p>我们知道Phase 1 Optimal Partition找到的是一个局部最优解，而为了探究局部最优解有多大概率为全局最优解，作者也进行了实验。文章在包括0-1矩阵、均匀分布的矩阵在内的多种矩阵上进行了实验，得到的结果比较相似。在<span class="math inline">\(30×30\)</span>的矩阵上平均概率约为<span class="math inline">\(0.5\)</span>，在<span class="math inline">\(60×60\)</span>的矩阵上平均概率约为<span class="math inline">\(0.2 \sim 0.3\)</span>，在<span class="math inline">\(120×120\)</span>的矩阵上平均概率约为<span class="math inline">\(0.05 \sim 0.1\)</span>。可以总结出一个大约的经验公式： <span class="math display">\[p(n)=2^{\frac{-n}{30}}\]</span></p>
+<h2 id="运行时间分析">运行时间分析</h2>
+<p>本节对方法的运行时间进行分析。我们对算法的各个步骤进行考察，分析每个过程的时间复杂度。要注意这里分析的只是对一次<span class="math inline">\(X\)</span>和<span class="math inline">\(Y\)</span>选定所需的时间（称之为1个<strong>pass</strong>），而不是从初始划分到局部最优解所需的时间。</p>
+<ol type="1">
+<li><p>第一次对所有节点的<span class="math inline">\(D\)</span>值计算时，由于要遍历每一个节点到其余所有节点的边权重，因此该过程的时间复杂度为<span class="math inline">\(O(n^2)\)</span>。</p></li>
+<li><p>对于第<span class="math inline">\(i\)</span>次更新D值，所需要的时间为<span class="math inline">\(n-i-1\)</span>，因此整个流程中更新<span class="math inline">\(D\)</span>值需要的总时间为 <span class="math display">\[(n-1)+(n-2)+...+1\]</span> 可以看出这部分的时间复杂度也是<span class="math inline">\(O(n^2)\)</span><br />
+</p></li>
+<li><p>对<span class="math inline">\(a_i, b_i\)</span>对的选择是运行时间主要的组成部分。作者在每轮pass选择前，都会先对完成更新的<span class="math inline">\(D\)</span>值进行排序，使得有 <span class="math display">\[D_{a_1} \ge D_{a_2} \ge ... \ge D_{a_m} \\ D_{b_1} \ge D_{b_2} \ge ... \ge D_{b_m}\]</span> 再按降序挑选节点。这样可以大幅度减少挑选时间，因为当选择到<span class="math inline">\({a_i}\)</span>和<span class="math inline">\({b_j}\)</span>时，若<span class="math inline">\(D_{a_i}+D_{b_j} \leq g_{max}\)</span>时，则对于所有<span class="math inline">\(k \ge i, l \ge j\)</span>，都不可能有<span class="math inline">\({ D_{a_k} } + { D_{b_l} } - 2{ c_{ {a_k}{b_l} } } \ge g_{max}\)</span>（前提是<span class="math inline">\(c_{ij} \ge 0\)</span>）。那么本轮对节点的遍历就可以提前终止了，由此可以节省大量的时间。由此，这部分主要的时间是由排序时间构成的： <span class="math display">\[n \log n + (n-1) \log (n-1) + ... + 2 \log 2\]</span> 时间复杂度为<span class="math inline">\(O(n^2 \log n)\)</span></p>
+<p>当然我们可以牺牲一定的准确度，不用排序，使用更快的策略选择出节点点对。例如在更新<span class="math inline">\(D\)</span>值时记录下拥有最大<span class="math inline">\(D_a\)</span>和<span class="math inline">\(D_b\)</span>的两个节点，直接作为本轮pass所选择的交换节点对。这个策略对于有稀疏邻接矩阵的图来说非常有效。可以在此基础上再做小小的扩展，把记录拥有第二大、第三大<span class="math inline">\(D_a\)</span>和<span class="math inline">\(D_b\)</span>也记录下来进行比较，那么就可以以较高的效率和准确率选择本轮需要的交换节点对。</p></li>
+</ol>
+<p>综合以上分析，若在选择节点对使用排序策略，那么时间复杂度为<span class="math inline">\(O(n^2 \log n)\)</span>；若使用快速扫描策略，则时间复杂度为<span class="math inline">\(O(n^2)\)</span>。作为比较，穷举所有可能的交换集合所需要的时间为<span class="math inline">\(O(n^{\frac{3}{2}}4^n)\)</span>。实验中，文章方法实际测得时间复杂度大约为<span class="math inline">\(O(n^{2.4})\)</span></p>
+<h2 id="优化phase-1-optimal-partition">优化Phase 1 Optimal Partition</h2>
+<p>我们知道Phase 1 Optimal Partition得到的结果是一个局部最优解，而非全局最优解。那么本节来讨论一下如何优化，使其得到的解有更高的概率成为全局最优解。在讲述之前需要强调，本节所提到的优化方法完全是基于实验发现，不具备完整的理论依据。</p>
+<p>作者在实验中发现，当Phase 1 Optimal Partition的结果不是全局最优解时，往往有<span class="math inline">\(\lvert X \rvert=\lvert Y \rvert \approx \frac{n}{2}\)</span>。这大致暗示了如果找到的<span class="math inline">\(\lvert X \rvert\)</span>和<span class="math inline">\(\lvert Y \rvert\)</span>明显小于<span class="math inline">\(\frac{n}{2}\)</span>，则很大概率说明找到了全局最优解。</p>
+<p>作者给出了一个启发式的方法，可以在对整个<span class="math inline">\(S\)</span>进行Phase 1 Optimal Partition之前，对初始划分<span class="math inline">\(A\)</span>和<span class="math inline">\(B\)</span>分别做一次Phase 1 Optimal Partition，得到<span class="math inline">\(A \rightarrow\{A_1, A_2\},\quad B \rightarrow\{B_1, B_2\}\)</span>。随后重新组合得到<span class="math inline">\(A_0={A_1}\cup{B_1},\quad B_0={A_2}\cup{B_2}\)</span>，作为新的初始划分再进行Phase 1 Optimal Partition。很显然这个方法会引入额外的运行时间，但作者实验证明了这是值得的。</p>
+<h2 id="划分不同大小的集合">划分不同大小的集合</h2>
+<p>上述的Phase 1 Optimal Partition始终是将一个图<span class="math inline">\(S\)</span>划分为两个相同大小的集合<span class="math inline">\((2×\frac{n}{2}=n)\)</span>，但事实上很容易将方法拓展到划分不同大小集合<span class="math inline">\((n_1+n_2=n)\)</span>。</p>
+<p>不妨设<span class="math inline">\(n_1&lt;n_2\)</span>，我们只需要先向<span class="math inline">\(S\)</span>中添加<span class="math inline">\((2×n_2-n)\)</span>个“哑节点”，即没有任何边与之关联的节点。在后续的划分过程中，我们限定每轮交换的节点对数不能超过<span class="math inline">\(n_1\)</span>。在Phase 1 Optimal Partition过程中，“哑节点”会被按需分配给两个划分子集，完成后去除“哑节点”，即可得到划分<span class="math inline">\(A\)</span>和<span class="math inline">\(B\)</span>。</p>
+<h2 id="不同权重的图节点">不同权重的图节点</h2>
+<p>前面讨论的过程限制了每个节点的权重为1。我们可以将一个权重<span class="math inline">\(m&gt;1\)</span>的节点转化为由<span class="math inline">\(m\)</span>个节点组成的集群，集群内部的每个节点间由极大权重的边互相关联，这样就可以放宽限制，使得有任意权重节点的图适用于Phase 1 Optimal Partition。但要注意到，随着各个节点的权重增大，Phase 1 Optimal Partition所要的时间也随之增大。</p>
+<h1 id="多路划分">多路划分</h1>
+<p>上一章讨论了k路划分最具代表性的特殊情况——2路均匀划分，以及如何将其推广至划分不定大小集合和拥有不同权重图节点的情况。本章将继续拓展，讨论如何实现<span class="math inline">\(k\)</span>路划分。</p>
+<h2 id="将问题缩小到2路划分">将问题缩小到2路划分</h2>
+<p>实现多路划分的基本思想是将一个图<span class="math inline">\(S\)</span>随机初始划分为<span class="math inline">\(k\)</span>个大小为<span class="math inline">\(n\)</span>的子集，并且对所有子集两两成对，重复将2路划分应用于这些子集对上。当然这样的解决方法当然不是最优的，因为可能存在三个或三个以上子集之间的复杂交换以达成全局最优解。但在本文中没有实现的合理方法。</p>
+<p>那么按照上述思路，一共有<span class="math inline">\(\left(\begin{matrix}k \\ 2 \end{matrix}\right)\)</span>对子集需要进行2路划分，而且一个pass通常是不够的，因为对某一对子集进行优化往往会破坏另一对子集之间成本的最优性。但实验发现事实上需要的pass数并不大，在大部分情况下，2轮pass即可完成95%以上的优化，而剩余更多的迭代所能给予的成本减少量非常少。</p>
+<h2 id="初始划分">初始划分</h2>
+<p>因为实现多路划分是将2路划分的思想应用于初始多路划分中，初始划分的重要性也就不言而喻了。找到一个好的初始划分不仅能减少系统成对优化的工作量，还能使达到最优解决方案的概率提升。作者给出了两个形成初始划分的方法：</p>
+<ol type="1">
+<li>给定一个图<span class="math inline">\(S\)</span>，为了形成一个<span class="math inline">\(k\)</span>路初始划分，先形成一个<span class="math inline">\(r\)</span>路划分。对<span class="math inline">\(r\)</span>路划分的每一个子集再做<span class="math inline">\(s\)</span>路划分，以此类推直到形成<span class="math inline">\(k\)</span>路划分（<span class="math inline">\(k=rs...\)</span>）。注意每次划分都是有优化过程的。但是这种方法有缺陷：在首次<span class="math inline">\(r\)</span>路划分会使各个子集的内部成本尽可能的高，这与各个子集后续的<span class="math inline">\(s\)</span>路划分产生了冲突。这样经历几个层次的划分，可能导致一个相对较差的结果。</li>
+<li>给定一个图<span class="math inline">\(S\)</span>，它具有<span class="math inline">\(kn\)</span>个节点。我们可以使用<a href="#划分不同大小的集合">划分不同大小集合</a>里的方法将它们划分为两个子集，其中一个包含<span class="math inline">\(n\)</span>个节点，另一个包含<span class="math inline">\((k-1)n\)</span>个节点。然后按照同样的方式继续对<span class="math inline">\((k-1)n\)</span>个节点的子集继续划分，以此类推直到形成<span class="math inline">\(k\)</span>个子集。</li>
+</ol>
+<p>无论是完全随机生成初始划分，还是按照方法生成良好初始划分，后续都跟随着成对优化过程。平均而言，良好初始划分不太可能导致比随机初始划分更差的结果。需要额外计算量的良好初始划分，对系统运行时间和最终结果的影响是否合理，这取决于所研究的邻接矩阵类型。</p>
+<h2 id="不限制子集数量">不限制子集数量</h2>
+<p>前面所讨论的方法，都有一个限制：最终形成的子集数量为<span class="math inline">\(k\)</span>个。<a href="#划分不同大小的集合">上一章</a>，我们为了把2路划分方法推广至具有划分不同大小集合的情况，引入了“哑节点”。这可以看作是一种松弛方法，允许通过扩展以获得较低成本的结果。</p>
+<p>我们在此要放开限制，即不限制子集的数量（大于等于<span class="math inline">\(k\)</span>），且每个子集内节点数最多为<span class="math inline">\(n\)</span>个。这通常可以带来更低成本的划分结果。具体方法如下：</p>
+<ol type="1">
+<li>对一个图<span class="math inline">\(S\)</span>，其内部节点数为<span class="math inline">\(kn\)</span>，要求划分使得每个子集内节点数不得超过<span class="math inline">\(n\)</span>个。首先不引入松弛，按照本章所提到的方法找到最优的划分方式，将其划分为<span class="math inline">\(k\)</span>个子集。</li>
+<li>引入<span class="math inline">\(n\)</span>个“哑节点”，构成一个子集。再次对所有子集进行两两交换，得到最佳<span class="math inline">\((k+1)\)</span>路划分。</li>
+<li>若不存在某个子集内节点全为“哑节点”，重复步骤2，继续添加<span class="math inline">\(n\)</span>个“哑节点”并交换优化。直到最终出现某个子集内节点全为“哑节点”时，结束。</li>
+<li>去除最终结果每个子集内的“哑节点”，即可得到无子集数限制的最优多路划分。</li>
+</ol>
+
+                
+              </div>
+            
+            <hr/>
+            <div>
+              <div class="post-metas my-3">
+  
+    <div class="post-meta mr-3 d-flex align-items-center">
+      <i class="iconfont icon-category"></i>
+      
+
+<span class="category-chains">
+  
+  
+    
+      <span class="category-chain">
+        
+  <a href="/categories/%E8%AE%BA%E6%96%87%E9%98%85%E8%AF%BB/" class="category-chain-item">论文阅读</a>
+  
+  
+
+      </span>
+    
+  
+</span>
+
+    </div>
+  
+  
+    <div class="post-meta">
+      <i class="iconfont icon-tags"></i>
+      
+        <a href="/tags/%E8%AE%BA%E6%96%87%E9%98%85%E8%AF%BB/">#论文阅读</a>
+      
+    </div>
+  
+</div>
+
+
+              
+  
+
+  <div class="license-box my-3">
+    <div class="license-title">
+      <div>论文阅读 | KL算法：An Efficient Heuristic Procedure for Partitioning Graphs</div>
+      <div>http://ztorchan.com/2022/10/31/readpaper-an-efficient-heuristic-procedure-for-partitioning-graphs/</div>
+    </div>
+    <div class="license-meta">
+      
+        <div class="license-meta-item">
+          <div>作者</div>
+          <div>ztorchan</div>
+        </div>
+      
+      
+        <div class="license-meta-item license-meta-date">
+          <div>发布于</div>
+          <div>2022年10月31日</div>
+        </div>
+      
+      
+      
+        <div class="license-meta-item">
+          <div>许可协议</div>
+          <div>
+            
+              
+              
+                <a target="_blank" href="https://creativecommons.org/licenses/by/4.0/">
+                  <span class="hint--top hint--rounded" aria-label="BY - 署名">
+                    <i class="iconfont icon-by"></i>
+                  </span>
+                </a>
+              
+            
+          </div>
+        </div>
+      
+    </div>
+    <div class="license-icon iconfont"></div>
+  </div>
+
+
+
+              
+                <div class="post-prevnext my-3">
+                  <article class="post-prev col-6">
+                    
+                    
+                      <a href="/2022/10/31/happy-halloween-2022/" title="🎃 万圣节！">
+                        <i class="iconfont icon-arrowleft"></i>
+                        <span class="hidden-mobile">🎃 万圣节！</span>
+                        <span class="visible-mobile">上一篇</span>
+                      </a>
+                    
+                  </article>
+                  <article class="post-next col-6">
+                    
+                    
+                      <a href="/2022/10/21/rocksdb-write-process/" title="RocksDB | Put流程">
+                        <span class="hidden-mobile">RocksDB | Put流程</span>
+                        <span class="visible-mobile">下一篇</span>
+                        <i class="iconfont icon-arrowright"></i>
+                      </a>
+                    
+                  </article>
+                </div>
+              
+            </div>
+
+            
+          </article>
+        </div>
+      </div>
+    </div>
+
+    <div class="side-col d-none d-lg-block col-lg-2">
+      
+  <aside class="sidebar" style="margin-left: -1rem">
+    <div id="toc">
+  <p class="toc-header">
+    <i class="iconfont icon-list"></i>
+    <span>目录</span>
+  </p>
+  <div class="toc-body" id="toc-body"></div>
+</div>
+
+
+
+  </aside>
+
+
+    </div>
+  </div>
+</div>
+
+
+
+
+
+  
+
+
+
+  
+
+
+
+  
+
+
+
+  
+
+
+
+  
+
+
+  
+  
+
+
+
+
+
+
+
+
+
+    
+
+    
+      <a id="scroll-top-button" aria-label="TOP" href="#" role="button">
+        <i class="iconfont icon-arrowup" aria-hidden="true"></i>
+      </a>
+    
+
+    
+      <div class="modal fade" id="modalSearch" tabindex="-1" role="dialog" aria-labelledby="ModalLabel"
+     aria-hidden="true">
+  <div class="modal-dialog modal-dialog-scrollable modal-lg" role="document">
+    <div class="modal-content">
+      <div class="modal-header text-center">
+        <h4 class="modal-title w-100 font-weight-bold">搜索</h4>
+        <button type="button" id="local-search-close" class="close" data-dismiss="modal" aria-label="Close">
+          <span aria-hidden="true">&times;</span>
+        </button>
+      </div>
+      <div class="modal-body mx-3">
+        <div class="md-form mb-5">
+          <input type="text" id="local-search-input" class="form-control validate">
+          <label data-error="x" data-success="v" for="local-search-input">关键词</label>
+        </div>
+        <div class="list-group" id="local-search-result"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+    
+
+    
+  </main>
+
+  <footer>
+    <div class="footer-inner">
+  
+  
+  
+  
+</div>
+
+  </footer>
+
+  <!-- Scripts -->
+  
+  <script  src="https://lib.baomitu.com/nprogress/0.2.0/nprogress.min.js" ></script>
+  <link  rel="stylesheet" href="https://lib.baomitu.com/nprogress/0.2.0/nprogress.min.css" />
+
+  <script>
+    NProgress.configure({"showSpinner":false,"trickleSpeed":100})
+    NProgress.start()
+    window.addEventListener('load', function() {
+      NProgress.done();
+    })
+  </script>
+
+
+<script  src="https://lib.baomitu.com/jquery/3.6.0/jquery.min.js" ></script>
+<script  src="https://lib.baomitu.com/twitter-bootstrap/4.6.1/js/bootstrap.min.js" ></script>
+<script  src="/js/events.js" ></script>
+<script  src="/js/plugins.js" ></script>
+
+
+  <script  src="https://lib.baomitu.com/typed.js/2.0.12/typed.min.js" ></script>
+  <script>
+    (function (window, document) {
+      var typing = Fluid.plugins.typing;
+      var subtitle = document.getElementById('subtitle');
+      if (!subtitle || !typing) {
+        return;
+      }
+      var text = subtitle.getAttribute('data-typed-text');
+      
+        typing(text);
+      
+    })(window, document);
+  </script>
+
+
+
+
+  
+    <script  src="/js/img-lazyload.js" ></script>
+  
+
+
+
+
+  
+<script>
+  Fluid.utils.createScript('https://lib.baomitu.com/tocbot/4.18.2/tocbot.min.js', function() {
+    var toc = jQuery('#toc');
+    if (toc.length === 0 || !window.tocbot) { return; }
+    var boardCtn = jQuery('#board-ctn');
+    var boardTop = boardCtn.offset().top;
+
+    window.tocbot.init(Object.assign({
+      tocSelector     : '#toc-body',
+      contentSelector : '.markdown-body',
+      linkClass       : 'tocbot-link',
+      activeLinkClass : 'tocbot-active-link',
+      listClass       : 'tocbot-list',
+      isCollapsedClass: 'tocbot-is-collapsed',
+      collapsibleClass: 'tocbot-is-collapsible',
+      scrollSmooth    : true,
+      includeTitleTags: true,
+      headingsOffset  : -boardTop,
+    }, CONFIG.toc));
+    if (toc.find('.toc-list-item').length > 0) {
+      toc.css('visibility', 'visible');
+    }
+
+    Fluid.events.registerRefreshCallback(function() {
+      if ('tocbot' in window) {
+        tocbot.refresh();
+        var toc = jQuery('#toc');
+        if (toc.length === 0 || !tocbot) {
+          return;
+        }
+        if (toc.find('.toc-list-item').length > 0) {
+          toc.css('visibility', 'visible');
+        }
+      }
+    });
+  });
+</script>
+
+
+  <script src=https://lib.baomitu.com/clipboard.js/2.0.11/clipboard.min.js></script>
+
+  <script>Fluid.plugins.codeWidget();</script>
+
+
+  
+<script>
+  Fluid.utils.createScript('https://lib.baomitu.com/anchor-js/4.3.1/anchor.min.js', function() {
+    window.anchors.options = {
+      placement: CONFIG.anchorjs.placement,
+      visible  : CONFIG.anchorjs.visible
+    };
+    if (CONFIG.anchorjs.icon) {
+      window.anchors.options.icon = CONFIG.anchorjs.icon;
+    }
+    var el = (CONFIG.anchorjs.element || 'h1,h2,h3,h4,h5,h6').split(',');
+    var res = [];
+    for (var item of el) {
+      res.push('.markdown-body > ' + item.trim());
+    }
+    if (CONFIG.anchorjs.placement === 'left') {
+      window.anchors.options.class = 'anchorjs-link-left';
+    }
+    window.anchors.add(res.join(', '));
+
+    Fluid.events.registerRefreshCallback(function() {
+      if ('anchors' in window) {
+        anchors.removeAll();
+        var el = (CONFIG.anchorjs.element || 'h1,h2,h3,h4,h5,h6').split(',');
+        var res = [];
+        for (var item of el) {
+          res.push('.markdown-body > ' + item.trim());
+        }
+        if (CONFIG.anchorjs.placement === 'left') {
+          anchors.options.class = 'anchorjs-link-left';
+        }
+        anchors.add(res.join(', '));
+      }
+    });
+  });
+</script>
+
+
+  
+<script>
+  Fluid.utils.createScript('https://lib.baomitu.com/fancybox/3.5.7/jquery.fancybox.min.js', function() {
+    Fluid.plugins.fancyBox();
+  });
+</script>
+
+
+  <script>Fluid.plugins.imageCaption();</script>
+
+  
+      <script>
+        if (!window.MathJax) {
+          window.MathJax = {
+            tex    : {
+              inlineMath: { '[+]': [['$', '$']] }
+            },
+            loader : {
+              load: ['ui/lazy']
+            },
+            options: {
+              renderActions: {
+                insertedScript: [200, () => {
+                  document.querySelectorAll('mjx-container').forEach(node => {
+                    let target = node.parentNode;
+                    if (target.nodeName.toLowerCase() === 'li') {
+                      target.parentNode.classList.add('has-jax');
+                    }
+                  });
+                }, '', false]
+              }
+            }
+          };
+        } else {
+          MathJax.startup.document.state(0);
+          MathJax.texReset();
+          MathJax.typeset();
+          MathJax.typesetPromise();
+        }
+
+        Fluid.events.registerRefreshCallback(function() {
+          if ('MathJax' in window && MathJax.startup.document && typeof MathJax.startup.document.state === 'function') {
+            MathJax.startup.document.state(0);
+            MathJax.texReset();
+            MathJax.typeset();
+            MathJax.typesetPromise();
+          }
+        });
+      </script>
+    
+
+  <script  src="https://lib.baomitu.com/mathjax/3.2.2/es5/tex-mml-chtml.js" ></script>
+
+  <script  src="/js/local-search.js" ></script>
+
+  <script defer src="https://busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js" ></script>
+
+
+
+
+
+<!-- 主题的启动项，将它保持在最底部 -->
+<!-- the boot of the theme, keep it at the bottom -->
+<script  src="/js/boot.js" ></script>
+
+
+  
+
+  <noscript>
+    <div class="noscript-warning">博客在允许 JavaScript 运行的环境下浏览效果更佳</div>
+  </noscript>
+</body>
+</html>

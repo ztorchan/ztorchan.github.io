@@ -1,0 +1,765 @@
+
+
+<!DOCTYPE html>
+<html lang="zh-CN" data-default-color-scheme=light>
+
+
+
+<head>
+  <meta charset="UTF-8">
+  <link rel="apple-touch-icon" sizes="76x76" href="/img/icon/t.png">
+  <link rel="icon" href="/img/icon/t.png">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, shrink-to-fit=no">
+  <meta http-equiv="x-ua-compatible" content="ie=edge">
+  
+  <meta name="theme-color" content="#2f4154">
+  <meta name="author" content="ztorchan">
+  <meta name="keywords" content="">
+  
+    <meta name="description" content="今天这篇文章从源码自顶向下地梳理一下RocksDB的写入流程。需要强调的是，RocksDB的写入流程非常复杂，本文的主要目的是记录从用户调用Put到完成写入过程中数据流动和调用关系，因此忽略了许多机制，仅保留了主干过程。">
+<meta property="og:type" content="article">
+<meta property="og:title" content="RocksDB | Put流程">
+<meta property="og:url" content="http://ztorchan.com/2022/10/21/rocksdb-write-process/index.html">
+<meta property="og:site_name" content="ZTorchan">
+<meta property="og:description" content="今天这篇文章从源码自顶向下地梳理一下RocksDB的写入流程。需要强调的是，RocksDB的写入流程非常复杂，本文的主要目的是记录从用户调用Put到完成写入过程中数据流动和调用关系，因此忽略了许多机制，仅保留了主干过程。">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="http://ztorchan.com/img/post_img/rocksdb-write-process/fig1.png#pic_center">
+<meta property="article:published_time" content="2022-10-21T14:13:24.000Z">
+<meta property="article:modified_time" content="2024-09-12T14:44:58.507Z">
+<meta property="article:author" content="ztorchan">
+<meta property="article:tag" content="rocksdb">
+<meta property="article:tag" content="源码剖析">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="http://ztorchan.com/img/post_img/rocksdb-write-process/fig1.png#pic_center">
+  
+  
+    <meta name="referrer" content="no-referrer-when-downgrade">
+  
+  
+  <title>RocksDB | Put流程 - ZTorchan</title>
+
+  <link  rel="stylesheet" href="https://lib.baomitu.com/twitter-bootstrap/4.6.1/css/bootstrap.min.css" />
+
+
+
+  <link  rel="stylesheet" href="https://lib.baomitu.com/github-markdown-css/4.0.0/github-markdown.min.css" />
+
+  <link  rel="stylesheet" href="https://lib.baomitu.com/hint.css/2.7.0/hint.min.css" />
+
+  <link  rel="stylesheet" href="https://lib.baomitu.com/fancybox/3.5.7/jquery.fancybox.min.css" />
+
+
+
+<!-- 主题依赖的图标库，不要自行修改 -->
+<!-- Do not modify the link that theme dependent icons -->
+
+<link rel="stylesheet" href="//at.alicdn.com/t/font_1749284_hj8rtnfg7um.css">
+
+
+
+<link rel="stylesheet" href="//at.alicdn.com/t/font_1736178_lbnruvf0jn.css">
+
+
+<link  rel="stylesheet" href="/css/main.css" />
+
+
+  <link id="highlight-css" rel="stylesheet" href="/css/highlight.css" />
+  
+    <link id="highlight-css-dark" rel="stylesheet" href="/css/highlight-dark.css" />
+  
+
+
+
+
+  <script id="fluid-configs">
+    var Fluid = window.Fluid || {};
+    Fluid.ctx = Object.assign({}, Fluid.ctx)
+    var CONFIG = {"hostname":"ztorchan.com","root":"/","version":"1.9.4","typing":{"enable":true,"typeSpeed":50,"cursorChar":"_","loop":false,"scope":[]},"anchorjs":{"enable":true,"element":"h1,h2,h3,h4,h5,h6","placement":"left","visible":"hover","icon":""},"progressbar":{"enable":true,"height_px":3,"color":"#29d","options":{"showSpinner":false,"trickleSpeed":100}},"code_language":{"enable":true,"default":"TEXT"},"copy_btn":true,"image_caption":{"enable":true},"image_zoom":{"enable":true,"img_url_replace":["",""]},"toc":{"enable":true,"placement":"right","headingSelector":"h1,h2,h3,h4,h5,h6","collapseDepth":0},"lazyload":{"enable":true,"loading_img":"/img/loading.gif","onlypost":false,"offset_factor":2},"web_analytics":{"enable":true,"follow_dnt":false,"baidu":null,"google":null,"gtag":null,"tencent":{"sid":null,"cid":null},"woyaola":null,"cnzz":null,"leancloud":{"app_id":null,"app_key":null,"server_url":null,"path":"window.location.pathname","ignore_local":false}},"search_path":"/local-search.xml"};
+
+    if (CONFIG.web_analytics.follow_dnt) {
+      var dntVal = navigator.doNotTrack || window.doNotTrack || navigator.msDoNotTrack;
+      Fluid.ctx.dnt = dntVal && (dntVal.startsWith('1') || dntVal.startsWith('yes') || dntVal.startsWith('on'));
+    }
+  </script>
+  <script  src="/js/utils.js" ></script>
+  <script  src="/js/color-schema.js" ></script>
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+
+
+  
+<meta name="generator" content="Hexo 6.3.0"></head>
+
+
+<body>
+  
+
+  <header>
+    
+
+<div class="header-inner" style="height: 35vh;">
+  <nav id="navbar" class="navbar fixed-top  navbar-expand-lg navbar-dark scrolling-navbar">
+  <div class="container">
+    <a class="navbar-brand" href="/">
+      <strong>ZTorchan</strong>
+    </a>
+
+    <button id="navbar-toggler-btn" class="navbar-toggler" type="button" data-toggle="collapse"
+            data-target="#navbarSupportedContent"
+            aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
+      <div class="animated-icon"><span></span><span></span><span></span></div>
+    </button>
+
+    <!-- Collapsible content -->
+    <div class="collapse navbar-collapse" id="navbarSupportedContent">
+      <ul class="navbar-nav ml-auto text-center">
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/">
+                <i class="iconfont icon-home-fill"></i>
+                <span>首页</span>
+              </a>
+            </li>
+          
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/archives/">
+                <i class="iconfont icon-archive-fill"></i>
+                <span>归档</span>
+              </a>
+            </li>
+          
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/categories/">
+                <i class="iconfont icon-category-fill"></i>
+                <span>分类</span>
+              </a>
+            </li>
+          
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/tags/">
+                <i class="iconfont icon-tags-fill"></i>
+                <span>标签</span>
+              </a>
+            </li>
+          
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/resource/">
+                <i class="iconfont icon-th-large"></i>
+                <span>资源</span>
+              </a>
+            </li>
+          
+        
+          
+          
+          
+          
+            <li class="nav-item dropdown">
+              <a class="nav-link dropdown-toggle" target="_self" href="javascript:;" role="button"
+                 data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                <i class="iconfont icon-cliplist"></i>
+                <span>清单</span>
+              </a>
+              <div class="dropdown-menu" aria-labelledby="navbarDropdown">
+                
+                  
+                  
+                  
+                  <a class="dropdown-item" href="/books/">
+                    <i class="iconfont icon-book"></i>
+                    <span>读书</span>
+                  </a>
+                
+                  
+                  
+                  
+                  <a class="dropdown-item" href="/movies/">
+                    <i class="iconfont icon-youtube-fill"></i>
+                    <span>电影</span>
+                  </a>
+                
+                  
+                  
+                  
+                  <a class="dropdown-item" href="/games/">
+                    <i class="iconfont icon-switch-fill"></i>
+                    <span>游戏</span>
+                  </a>
+                
+              </div>
+            </li>
+          
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/guestbook/">
+                <i class="iconfont icon-speakernotes"></i>
+                <span>留言板</span>
+              </a>
+            </li>
+          
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/links/">
+                <i class="iconfont icon-link-fill"></i>
+                <span>友链</span>
+              </a>
+            </li>
+          
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/about/">
+                <i class="iconfont icon-user-fill"></i>
+                <span>关于</span>
+              </a>
+            </li>
+          
+        
+        
+          <li class="nav-item" id="search-btn">
+            <a class="nav-link" target="_self" href="javascript:;" data-toggle="modal" data-target="#modalSearch" aria-label="Search">
+              <i class="iconfont icon-search"></i>
+            </a>
+          </li>
+          
+        
+        
+          <li class="nav-item" id="color-toggle-btn">
+            <a class="nav-link" target="_self" href="javascript:;" aria-label="Color Toggle">
+              <i class="iconfont icon-dark" id="color-toggle-icon"></i>
+            </a>
+          </li>
+        
+      </ul>
+    </div>
+  </div>
+</nav>
+
+  
+
+<div id="banner" class="banner" parallax=true
+     style="background: url('/img/bg/black.jpg') no-repeat center center; background-size: cover;">
+  <div class="full-bg-img">
+    <div class="mask flex-center" style="background-color: rgba(0, 0, 0, 0.3)">
+      <div class="banner-text text-center fade-in-up">
+        <div class="h2">
+          
+            <span id="subtitle" data-typed-text="RocksDB | Put流程"></span>
+          
+        </div>
+
+        
+          
+  <div class="mt-3">
+    
+    
+      <span class="post-meta">
+        <i class="iconfont icon-date-fill" aria-hidden="true"></i>
+        <time datetime="2022-10-21 22:13" pubdate>
+          2022年10月21日 晚上
+        </time>
+      </span>
+    
+  </div>
+
+  <div class="mt-1">
+    
+      <span class="post-meta mr-2">
+        <i class="iconfont icon-chart"></i>
+        
+          17k 字
+        
+      </span>
+    
+
+    
+
+    
+    
+      
+        <span id="busuanzi_container_page_pv" style="display: none">
+          <i class="iconfont icon-eye" aria-hidden="true"></i>
+          <span id="busuanzi_value_page_pv"></span> 次
+        </span>
+        
+      
+    
+  </div>
+
+
+        
+      </div>
+
+      
+    </div>
+  </div>
+</div>
+
+</div>
+
+  </header>
+
+  <main>
+    
+      
+
+<div class="container-fluid nopadding-x">
+  <div class="row nomargin-x">
+    <div class="side-col d-none d-lg-block col-lg-2">
+      
+
+    </div>
+
+    <div class="col-lg-8 nopadding-x-md">
+      <div class="container nopadding-x-md" id="board-ctn">
+        <div id="board">
+          <article class="post-content mx-auto">
+            <!-- SEO header -->
+            <h1 style="display: none">RocksDB | Put流程</h1>
+            
+            
+              <div class="markdown-body">
+                
+                <p>今天这篇文章从源码自顶向下地梳理一下RocksDB的写入流程。需要强调的是，RocksDB的写入流程非常复杂，本文的主要目的是记录从用户调用<code>Put</code>到完成写入过程中数据流动和调用关系，因此忽略了许多机制，仅保留了主干过程。</p>
+<span id="more"></span>
+<h2 id="用户接口">用户接口</h2>
+<p>首先当然是从用户调用的接口开始探索。文档里给出了RocksDB的写入调用形式： <figure class="highlight c++"><figcaption><span>用户调用示例</span></figcaption><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><code class="hljs C++">rocksdb::DB* db;<br>rocksdb::Options options;<br>options.create_if_missing = <span class="hljs-literal">true</span>;<br>rocksdb::Status status = rocksdb::DB::<span class="hljs-built_in">Open</span>(options, <span class="hljs-string">&quot;/tmp/testdb&quot;</span>, &amp;db);<br><span class="hljs-built_in">assert</span>(status.<span class="hljs-built_in">ok</span>());<br><br>std::string key, value;<br>rocksdb::Status s = db-&gt;<span class="hljs-built_in">Put</span>(rocksdb::<span class="hljs-built_in">WriteOptions</span>(), key, value);<br>s = db-&gt;<span class="hljs-built_in">Delete</span>(rocksdb::<span class="hljs-built_in">WriteOptions</span>(), key);<br></code></pre></td></tr></table></figure> 可以看到用户通过<code>rocksdb::DB</code>的<code>Put</code>方法写入，<code>Delete</code>方法删除。我们暂且忽略<code>Delete</code>，追查下去看看<code>Put</code>究竟做了什么。</p>
+<h2 id="db和dbimpl的put方法"><code>DB</code>和<code>DBImpl</code>的Put方法</h2>
+<p><code>rocksdb::DB</code>类（由于RocksDB统一使用了<code>rocksdb</code>的命名空间，接下来的描述将不再加上<code>rocksdb::</code>）的声明被放在了<code>/include/db.h</code>里，其中关于<code>Put</code>方法的声明如下： <figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br></pre></td><td class="code"><pre><code class="hljs C++"><span class="hljs-keyword">class</span> <span class="hljs-title class_">DB</span> &#123;<br>  ...<br><br>  <span class="hljs-comment">// Set the database entry for &quot;key&quot; to &quot;value&quot;.</span><br>  <span class="hljs-comment">// If &quot;key&quot; already exists, it will be overwritten.</span><br>  <span class="hljs-comment">// Returns OK on success, and a non-OK status on error.</span><br>  <span class="hljs-comment">// Note: consider setting options.sync = true.</span><br>  <span class="hljs-function"><span class="hljs-keyword">virtual</span> Status <span class="hljs-title">Put</span><span class="hljs-params">(<span class="hljs-type">const</span> WriteOptions&amp; options,</span></span><br><span class="hljs-params"><span class="hljs-function">                     ColumnFamilyHandle* column_family, <span class="hljs-type">const</span> Slice&amp; key,</span></span><br><span class="hljs-params"><span class="hljs-function">                     <span class="hljs-type">const</span> Slice&amp; value)</span> </span>= <span class="hljs-number">0</span>;<br>  <span class="hljs-function"><span class="hljs-keyword">virtual</span> Status <span class="hljs-title">Put</span><span class="hljs-params">(<span class="hljs-type">const</span> WriteOptions&amp; options,</span></span><br><span class="hljs-params"><span class="hljs-function">                     ColumnFamilyHandle* column_family, <span class="hljs-type">const</span> Slice&amp; key,</span></span><br><span class="hljs-params"><span class="hljs-function">                     <span class="hljs-type">const</span> Slice&amp; ts, <span class="hljs-type">const</span> Slice&amp; value)</span> </span>= <span class="hljs-number">0</span>;<br>  <span class="hljs-function"><span class="hljs-keyword">virtual</span> Status <span class="hljs-title">Put</span><span class="hljs-params">(<span class="hljs-type">const</span> WriteOptions&amp; options, <span class="hljs-type">const</span> Slice&amp; key,</span></span><br><span class="hljs-params"><span class="hljs-function">                     <span class="hljs-type">const</span> Slice&amp; value)</span> </span>&#123;<br>    <span class="hljs-keyword">return</span> <span class="hljs-built_in">Put</span>(options, <span class="hljs-built_in">DefaultColumnFamily</span>(), key, value);<br>  &#125;<br>  <span class="hljs-function"><span class="hljs-keyword">virtual</span> Status <span class="hljs-title">Put</span><span class="hljs-params">(<span class="hljs-type">const</span> WriteOptions&amp; options, <span class="hljs-type">const</span> Slice&amp; key,</span></span><br><span class="hljs-params"><span class="hljs-function">                     <span class="hljs-type">const</span> Slice&amp; ts, <span class="hljs-type">const</span> Slice&amp; value)</span> </span>&#123;<br>    <span class="hljs-keyword">return</span> <span class="hljs-built_in">Put</span>(options, <span class="hljs-built_in">DefaultColumnFamily</span>(), key, ts, value);<br>  &#125;<br>  <br>  <span class="hljs-comment">// 需要说明的是，这里的Slice是RocksDB对封装的一种字符串，</span><br>  <span class="hljs-comment">// 在本文中把它看作普通的字符串即可。</span><br>  ...<br>&#125;<br></code></pre></td></tr></table></figure> <code>Put</code>方法一共有四个重载。第一个需要提供的参数：写入设置引用<code>const WriteOptions&amp;</code>、列族handle指针<code>ColumnFamilyHandle*</code>以及需要存储的键和值<code>const Slice&amp;</code>。第二个在第一个的基础上添加了时间戳<code>const Slice&amp;</code>。第三个和第四个不过是用户省略列族handle指针，由其提供默认列族，调用回第一个和第二个<code>Put</code>方法。值得注意的是，前两个<code>Put</code>方法是纯虚函数，也就是说还有一个子类是以<code>DB</code>为基类构建的，是真正供以实例化的类。</p>
+<p>那么这个类在哪呢？<code>/db/db_impl.h</code>里声明了<code>DB</code>的实现类<code>DBImpl</code>： <figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><code class="hljs C++"><span class="hljs-keyword">class</span> <span class="hljs-title class_">DBImpl</span> : <span class="hljs-keyword">public</span> DB &#123;<br>  ...<br>  <span class="hljs-keyword">using</span> DB::Put;<br>  <span class="hljs-function">Status <span class="hljs-title">Put</span><span class="hljs-params">(<span class="hljs-type">const</span> WriteOptions&amp; options, ColumnFamilyHandle* column_family,</span></span><br><span class="hljs-params"><span class="hljs-function">             <span class="hljs-type">const</span> Slice&amp; key, <span class="hljs-type">const</span> Slice&amp; value)</span> <span class="hljs-keyword">override</span></span>;<br>  <span class="hljs-function">Status <span class="hljs-title">Put</span><span class="hljs-params">(<span class="hljs-type">const</span> WriteOptions&amp; options, ColumnFamilyHandle* column_family,</span></span><br><span class="hljs-params"><span class="hljs-function">             <span class="hljs-type">const</span> Slice&amp; key, <span class="hljs-type">const</span> Slice&amp; ts, <span class="hljs-type">const</span> Slice&amp; value)</span> <span class="hljs-keyword">override</span></span>;<br>  ...<br>&#125;<br></code></pre></td></tr></table></figure> <code>DBImpl</code>暴露了父类<code>DB</code>的四个<code>Put</code>方法，并声明了两个相同的带列族参数的<code>Put</code>方法（即和<code>DB</code>前两个<code>Put</code>完全相同）。首先来看看<code>DBImpl::Put</code>的定义，RocksDB在<code>/db/db_impl_write.cc</code>对它们进行了实现： <figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br></pre></td><td class="code"><pre><code class="hljs C++"><span class="hljs-comment">// DBImpl的Put方法</span><br><span class="hljs-function">Status <span class="hljs-title">DBImpl::Put</span><span class="hljs-params">(<span class="hljs-type">const</span> WriteOptions&amp; o, ColumnFamilyHandle* column_family,</span></span><br><span class="hljs-params"><span class="hljs-function">                   <span class="hljs-type">const</span> Slice&amp; key, <span class="hljs-type">const</span> Slice&amp; val)</span> </span>&#123;<br>  <span class="hljs-type">const</span> Status s = <span class="hljs-built_in">FailIfCfHasTs</span>(column_family);<br>  <span class="hljs-keyword">if</span> (!s.<span class="hljs-built_in">ok</span>()) &#123;<br>    <span class="hljs-keyword">return</span> s;<br>  &#125;<br>  <span class="hljs-keyword">return</span> DB::<span class="hljs-built_in">Put</span>(o, column_family, key, val);<br>&#125;<br><br><span class="hljs-function">Status <span class="hljs-title">DBImpl::Put</span><span class="hljs-params">(<span class="hljs-type">const</span> WriteOptions&amp; o, ColumnFamilyHandle* column_family,</span></span><br><span class="hljs-params"><span class="hljs-function">                   <span class="hljs-type">const</span> Slice&amp; key, <span class="hljs-type">const</span> Slice&amp; ts, <span class="hljs-type">const</span> Slice&amp; val)</span> </span>&#123;<br>  <span class="hljs-type">const</span> Status s = <span class="hljs-built_in">FailIfTsMismatchCf</span>(column_family, ts, <span class="hljs-comment">/*ts_for_read=*/</span><span class="hljs-literal">false</span>);<br>  <span class="hljs-keyword">if</span> (!s.<span class="hljs-built_in">ok</span>()) &#123;<br>    <span class="hljs-keyword">return</span> s;<br>  &#125;<br>  <span class="hljs-keyword">return</span> DB::<span class="hljs-built_in">Put</span>(o, column_family, key, ts, val);<br>&#125;<br></code></pre></td></tr></table></figure> 很明显，<code>DBImpl::Put</code>也只是在对列族和时间戳作了合法性检查之后再调用回前两个<code>DB::Put</code>执行真正的写入工作。所以，为了继续探究写流程，只要沿着前两个<code>DB::Put</code>的实现继续深入就好了。对<code>DB::Put</code>的实现同样在<code>/db/db_impl_write.cc</code>中，定义如下： <figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br></pre></td><td class="code"><pre><code class="hljs C++"><span class="hljs-function">Status <span class="hljs-title">DB::Put</span><span class="hljs-params">(<span class="hljs-type">const</span> WriteOptions&amp; opt, ColumnFamilyHandle* column_family,</span></span><br><span class="hljs-params"><span class="hljs-function">               <span class="hljs-type">const</span> Slice&amp; key, <span class="hljs-type">const</span> Slice&amp; value)</span> </span>&#123;<br>  <span class="hljs-comment">// Pre-allocate size of write batch conservatively.</span><br>  <span class="hljs-comment">// 8 bytes are taken by header, 4 bytes for count, 1 byte for type,</span><br>  <span class="hljs-comment">// and we allocate 11 extra bytes for key length, as well as value length.</span><br>  <span class="hljs-function">WriteBatch <span class="hljs-title">batch</span><span class="hljs-params">(key.size() + value.size() + <span class="hljs-number">24</span>, <span class="hljs-number">0</span> <span class="hljs-comment">/* max_bytes */</span>,</span></span><br><span class="hljs-params"><span class="hljs-function">                   opt.protection_bytes_per_key, <span class="hljs-number">0</span> <span class="hljs-comment">/* default_cf_ts_sz */</span>)</span></span>;<br>  Status s = batch.<span class="hljs-built_in">Put</span>(column_family, key, value);<br>  <span class="hljs-keyword">if</span> (!s.<span class="hljs-built_in">ok</span>()) &#123;<br>    <span class="hljs-keyword">return</span> s;<br>  &#125;<br>  <span class="hljs-keyword">return</span> <span class="hljs-built_in">Write</span>(opt, &amp;batch);<br>&#125;<br><br><span class="hljs-function">Status <span class="hljs-title">DB::Put</span><span class="hljs-params">(<span class="hljs-type">const</span> WriteOptions&amp; opt, ColumnFamilyHandle* column_family,</span></span><br><span class="hljs-params"><span class="hljs-function">               <span class="hljs-type">const</span> Slice&amp; key, <span class="hljs-type">const</span> Slice&amp; ts, <span class="hljs-type">const</span> Slice&amp; value)</span> </span>&#123;<br>  ColumnFamilyHandle* default_cf = <span class="hljs-built_in">DefaultColumnFamily</span>();<br>  <span class="hljs-built_in">assert</span>(default_cf);<br>  <span class="hljs-type">const</span> Comparator* <span class="hljs-type">const</span> default_cf_ucmp = default_cf-&gt;<span class="hljs-built_in">GetComparator</span>();<br>  <span class="hljs-built_in">assert</span>(default_cf_ucmp);<br>  <span class="hljs-function">WriteBatch <span class="hljs-title">batch</span><span class="hljs-params">(<span class="hljs-number">0</span> <span class="hljs-comment">/* reserved_bytes */</span>, <span class="hljs-number">0</span> <span class="hljs-comment">/* max_bytes */</span>,</span></span><br><span class="hljs-params"><span class="hljs-function">                   opt.protection_bytes_per_key,</span></span><br><span class="hljs-params"><span class="hljs-function">                   default_cf_ucmp-&gt;timestamp_size())</span></span>;<br>  Status s = batch.<span class="hljs-built_in">Put</span>(column_family, key, ts, value);<br>  <span class="hljs-keyword">if</span> (!s.<span class="hljs-built_in">ok</span>()) &#123;<br>    <span class="hljs-keyword">return</span> s;<br>  &#125;<br>  <span class="hljs-keyword">return</span> <span class="hljs-built_in">Write</span>(opt, &amp;batch);<br>&#125;<br></code></pre></td></tr></table></figure> <strong>在真正进行写入工作时，<code>Put</code>还是先用<code>WriteBatch</code>对其进行了封装，再调用<code>Write</code>写入</strong>。和平常用户使用<code>WriteBatch</code>进行批量原子更新是一样的，只不过这个batch中只有一个Put操作。所以接下来，我们就要看看<code>Write</code>是怎样把<code>WriteBatch</code>写入的。</p>
+<h2 id="writebatch和write"><code>WriteBatch</code>和<code>Write</code></h2>
+<p>简单起见，从这一章开始只对不带时间戳的写流程继续追查下去（更多是我还没完全理解RocksDB中时间戳的概念，或许是和Bigtable中的是一致的？）。也就是从这一个方法开始： <figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><code class="hljs C++"><span class="hljs-function">Status <span class="hljs-title">DB::Put</span><span class="hljs-params">(<span class="hljs-type">const</span> WriteOptions&amp; opt, ColumnFamilyHandle* column_family,</span></span><br><span class="hljs-params"><span class="hljs-function">               <span class="hljs-type">const</span> Slice&amp; key, <span class="hljs-type">const</span> Slice&amp; value)</span> </span>&#123;<br>  <span class="hljs-comment">// Pre-allocate size of write batch conservatively.</span><br>  <span class="hljs-comment">// 8 bytes are taken by header, 4 bytes for count, 1 byte for type,</span><br>  <span class="hljs-comment">// and we allocate 11 extra bytes for key length, as well as value length.</span><br>  <span class="hljs-function">WriteBatch <span class="hljs-title">batch</span><span class="hljs-params">(key.size() + value.size() + <span class="hljs-number">24</span>, <span class="hljs-number">0</span> <span class="hljs-comment">/* max_bytes */</span>,</span></span><br><span class="hljs-params"><span class="hljs-function">                   opt.protection_bytes_per_key, <span class="hljs-number">0</span> <span class="hljs-comment">/* default_cf_ts_sz */</span>)</span></span>;<br>  Status s = batch.<span class="hljs-built_in">Put</span>(column_family, key, value);<br>  <span class="hljs-keyword">if</span> (!s.<span class="hljs-built_in">ok</span>()) &#123;<br>    <span class="hljs-keyword">return</span> s;<br>  &#125;<br>  <span class="hljs-keyword">return</span> <span class="hljs-built_in">Write</span>(opt, &amp;batch);<br>&#125;<br></code></pre></td></tr></table></figure> 这里的逻辑非常简单: 1. 创建了一个<code>WriteBatch</code> 2. <code>WriteBatch</code>调用<code>Put</code>记录操作 3. 调用<code>Write</code>把<code>WriteBatch</code>更新写入数据库</p>
+<h3 id="writebatch的定义"><code>WriteBatch</code>的定义</h3>
+<p>鉴于本文目的在于尽可能简单地梳理一遍写流程，源码仅挑关键的部分展示和解释。关于<code>WriteBatch</code>的声明在<code>include/rocksdb/write_batch.h</code>： <figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><code class="hljs C++"><span class="hljs-keyword">class</span> <span class="hljs-title class_">WriteBatch</span> : <span class="hljs-keyword">public</span> WriteBatchBase &#123;<br>  ......<br><br>  <span class="hljs-keyword">protected</span>:<br>    std::string rep_;<br>&#125;<br></code></pre></td></tr></table></figure> <code>WriteBatch</code>继承于基类<code>WriteBatchBase</code>，基类是一个完全由虚函数构成的接口类。<code>rep_</code>是<code>WriteBatch</code>最重要的部分，它是一个字符串，按一定的格式记录了所要进行所有操作，记录格式如下： <figure class="highlight dts"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br></pre></td><td class="code"><pre><code class="hljs dts"><span class="hljs-symbol">WriteBatch:</span>:rep_ :=<br><span class="hljs-symbol">   sequence:</span> fixed64<br><span class="hljs-symbol">   count:</span> fixed32<br><span class="hljs-symbol">   data:</span> record[count]<br>record :=<br>   kTypeValue varstring varstring<br>   kTypeDeletion varstring<br>   kTypeSingleDeletion varstring<br>   kTypeRangeDeletion varstring varstring<br>   kTypeMerge varstring varstring<br>   kTypeColumnFamilyValue varint32 varstring varstring<br>   kTypeColumnFamilyDeletion varint32 varstring<br>   kTypeColumnFamilySingleDeletion varint32 varstring<br>   kTypeColumnFamilyRangeDeletion varint32 varstring varstring<br>   kTypeColumnFamilyMerge varint32 varstring varstring<br>   kTypeBeginPrepareXID<br>   kTypeEndPrepareXID varstring<br>   kTypeCommitXID varstring<br>   kTypeCommitXIDAndTimestamp varstring varstring<br>   kTypeRollbackXID varstring<br>   kTypeBeginPersistedPrepareXID<br>   kTypeBeginUnprepareXID<br>   kTypeWideColumnEntity varstring varstring<br>   kTypeColumnFamilyWideColumnEntity varint32 varstring varstring<br>   kTypeNoop<br>varstring :=<br><span class="hljs-symbol">   len:</span> varint32<br><span class="hljs-symbol">   data:</span> uint8[len]<br></code></pre></td></tr></table></figure> <img src="/img/post_img/rocksdb-write-process/fig1.png#pic_center" srcset="/img/loading.gif" lazyload /></p>
+<p><code>rep_</code>的开头放置<code>fixed64</code>类型的序列号，第二位是<code>fixed32</code>类型的当前记录数，随后是各条操作记录。可以看到每条记录都是以<code>操作类型 + 操作内容</code>的形式构成的，且为了更契合Rocksdb的需求，同时为了节省空间，采用了一种变长字符串<code>varstring</code>的编码方法。关于<code>rep_</code>内各种数据类型的编解码实现在<code>util/coding.h</code>和<code>util/coding.cc</code>内，在本文不做分析。</p>
+<h3 id="writebatch调用put"><code>WriteBatch</code>调用<code>Put</code></h3>
+<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br></pre></td><td class="code"><pre><code class="hljs C++"><span class="hljs-function">Status <span class="hljs-title">WriteBatch::Put</span><span class="hljs-params">(ColumnFamilyHandle* column_family, <span class="hljs-type">const</span> Slice&amp; key,</span></span><br><span class="hljs-params"><span class="hljs-function">                       <span class="hljs-type">const</span> Slice&amp; value)</span> </span>&#123;<br>  <span class="hljs-type">size_t</span> ts_sz = <span class="hljs-number">0</span>;<br>  <span class="hljs-type">uint32_t</span> cf_id = <span class="hljs-number">0</span>;<br>  Status s;<br><br>  <span class="hljs-comment">// 利用ColumnFamilyHandle，获取CF的id</span><br>  std::<span class="hljs-built_in">tie</span>(s, cf_id, ts_sz) =<br>      WriteBatchInternal::<span class="hljs-built_in">GetColumnFamilyIdAndTimestampSize</span>(<span class="hljs-keyword">this</span>, column_family);<br><br>  <span class="hljs-keyword">if</span> (!s.<span class="hljs-built_in">ok</span>()) &#123;<br>    <span class="hljs-keyword">return</span> s;<br>  &#125;<br><br>  <span class="hljs-comment">// 调用WriteBatchInternal::Put开始写入操作记录</span><br>  <span class="hljs-keyword">if</span> (<span class="hljs-number">0</span> == ts_sz) &#123;<br>    <span class="hljs-keyword">return</span> WriteBatchInternal::<span class="hljs-built_in">Put</span>(<span class="hljs-keyword">this</span>, cf_id, key, value);<br>  &#125;<br><br>  needs_in_place_update_ts_ = <span class="hljs-literal">true</span>;<br>  has_key_with_ts_ = <span class="hljs-literal">true</span>;<br>  <span class="hljs-function">std::string <span class="hljs-title">dummy_ts</span><span class="hljs-params">(ts_sz, <span class="hljs-string">&#x27;\0&#x27;</span>)</span></span>;<br>  std::array&lt;Slice, 2&gt; key_with_ts&#123;&#123;key, dummy_ts&#125;&#125;;<br>  <span class="hljs-keyword">return</span> WriteBatchInternal::<span class="hljs-built_in">Put</span>(<span class="hljs-keyword">this</span>, cf_id, <span class="hljs-built_in">SliceParts</span>(key_with_ts.<span class="hljs-built_in">data</span>(), <span class="hljs-number">2</span>),<br>                                 <span class="hljs-built_in">SliceParts</span>(&amp;value, <span class="hljs-number">1</span>));<br>&#125;<br></code></pre></td></tr></table></figure>
+<p><code>WatchBatchInternal</code>是辅助<code>WatchBatch</code>的工具类，里面定义了一系列辅助方法。<code>WriteBatch::Put</code>先根据列族的Handle获取了列族的Id，随后再调用了<code>WatchBatchInternal::Put</code>，送入当前<code>WatchBatch</code>指针、列族Id、key和value，开始记录操作。 <figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br></pre></td><td class="code"><pre><code class="hljs C++"><span class="hljs-function">Status <span class="hljs-title">WriteBatchInternal::Put</span><span class="hljs-params">(WriteBatch* b, <span class="hljs-type">uint32_t</span> column_family_id,</span></span><br><span class="hljs-params"><span class="hljs-function">                               <span class="hljs-type">const</span> SliceParts&amp; key, <span class="hljs-type">const</span> SliceParts&amp; value)</span> </span>&#123;<br>  Status s = <span class="hljs-built_in">CheckSlicePartsLength</span>(key, value);<br>  <span class="hljs-keyword">if</span> (!s.<span class="hljs-built_in">ok</span>()) &#123;<br>    <span class="hljs-keyword">return</span> s;<br>  &#125;<br><br>  <span class="hljs-comment">// 创建一个保存点，保存当前状态</span><br>  <span class="hljs-function">LocalSavePoint <span class="hljs-title">save</span><span class="hljs-params">(b)</span></span>;<br><br>  <span class="hljs-comment">// 设置WatchBatch-&gt;rep_里的count</span><br>  WriteBatchInternal::<span class="hljs-built_in">SetCount</span>(b, WriteBatchInternal::<span class="hljs-built_in">Count</span>(b) + <span class="hljs-number">1</span>);<br><br>  <span class="hljs-comment">// 开始记录操作，首先写入操作类型，根据是否为目标列族是否为默认列族设定kTypeValue或kTypeColumnFamilyValue</span><br>  <span class="hljs-keyword">if</span> (column_family_id == <span class="hljs-number">0</span>) &#123;<br>    b-&gt;rep_.<span class="hljs-built_in">push_back</span>(<span class="hljs-built_in">static_cast</span>&lt;<span class="hljs-type">char</span>&gt;(kTypeValue));<br>  &#125; <span class="hljs-keyword">else</span> &#123;<br>    b-&gt;rep_.<span class="hljs-built_in">push_back</span>(<span class="hljs-built_in">static_cast</span>&lt;<span class="hljs-type">char</span>&gt;(kTypeColumnFamilyValue));<br>    <span class="hljs-built_in">PutVarint32</span>(&amp;b-&gt;rep_, column_family_id);<br>  &#125;<br>  <span class="hljs-comment">// 分别写入key和value</span><br>  <span class="hljs-built_in">PutLengthPrefixedSliceParts</span>(&amp;b-&gt;rep_, key);<br>  <span class="hljs-built_in">PutLengthPrefixedSliceParts</span>(&amp;b-&gt;rep_, value);<br>  <span class="hljs-comment">// 修改WatchBatch的flag，添加HAS_PUT标志表示该batch中有Put操作</span><br>  b-&gt;content_flags_.<span class="hljs-built_in">store</span>(<br>      b-&gt;content_flags_.<span class="hljs-built_in">load</span>(std::memory_order_relaxed) | ContentFlags::HAS_PUT,<br>      std::memory_order_relaxed);<br>  <span class="hljs-keyword">if</span> (b-&gt;prot_info_ != <span class="hljs-literal">nullptr</span>) &#123;<br>    <span class="hljs-comment">// See comment in first `WriteBatchInternal::Put()` overload concerning the</span><br>    <span class="hljs-comment">// `ValueType` argument passed to `ProtectKVO()`.</span><br>    b-&gt;prot_info_-&gt;entries_.<span class="hljs-built_in">emplace_back</span>(<span class="hljs-built_in">ProtectionInfo64</span>()<br>                                             .<span class="hljs-built_in">ProtectKVO</span>(key, value, kTypeValue)<br>                                             .<span class="hljs-built_in">ProtectC</span>(column_family_id));<br>  &#125;<br><br>  <span class="hljs-comment">// 提交并解锁WatchBatch</span><br>  <span class="hljs-keyword">return</span> save.<span class="hljs-built_in">commit</span>();<br>&#125;<br></code></pre></td></tr></table></figure> 如上注释，<code>WriteBatchInternal::Put()</code>会先创建一个保存点，用于保存当前batch的情况。紧接着会对<code>rep_</code>的count部分增加计数1，随后添加<code>Put</code>记录。最后<code>save.commit()</code>会判断<code>rep_</code>是否超出了容许的最大范围，若超出则会回退至记录前的状态，并返回一个<code>Status::MemoryLimit()</code>信号，而非正常的<code>Status::OK()</code>。至此，便<code>WriteBatch</code>完成了对<code>Put</code>操作的记录。接下来就由<code>DB::Put</code>内的<code>Write(opt, &amp;batch);</code>语句开始将batch写入数据库。</p>
+<h3 id="调用write把writebatch更新写入数据库">调用<code>Write</code>把<code>WriteBatch</code>更新写入数据库</h3>
+<p>在实际使用过程中，由于我们操作的是<code>DBImpl</code>对象，所以实际上会使用到<code>DBImpl::Write()</code>，它被定义在了<code>db/db_impl/db_impl_write.cc</code>里： <figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><code class="hljs C++"><span class="hljs-function">Status <span class="hljs-title">DBImpl::Write</span><span class="hljs-params">(<span class="hljs-type">const</span> WriteOptions&amp; write_options, WriteBatch* my_batch)</span> </span>&#123;<br>  Status s;<br>  <span class="hljs-keyword">if</span> (write_options.protection_bytes_per_key &gt; <span class="hljs-number">0</span>) &#123;<br>    s = WriteBatchInternal::<span class="hljs-built_in">UpdateProtectionInfo</span>(<br>        my_batch, write_options.protection_bytes_per_key);<br>  &#125;<br>  <span class="hljs-keyword">if</span> (s.<span class="hljs-built_in">ok</span>()) &#123;<br>    s = <span class="hljs-built_in">WriteImpl</span>(write_options, my_batch, <span class="hljs-comment">/*callback=*/</span><span class="hljs-literal">nullptr</span>,<br>                  <span class="hljs-comment">/*log_used=*/</span><span class="hljs-literal">nullptr</span>);<br>  &#125;<br>  <span class="hljs-keyword">return</span> s;<br>&#125;<br></code></pre></td></tr></table></figure> 可以看到它还会再进一步调用<code>DBImpl::WriteImpl()</code>。<code>DBImpl::WriteImpl()</code>代码量非常多，将近500行，包含了许多预处理和不同的写入分支。这个过程中大致可以概括成三个分支：(1)只写入到WAL，会跳转<code>WriteImplWALOnly()</code>；(2)Pipeline写入，会跳转<code>PipelinedWriteImpl()</code>；(3)非Pipeline写入，继续执行。关注非Pipeline写入，又分为两种情况：是否能够对Memtables多线程并发写入（通过option配置）。在这里我们继续沿着默认的单线程写入，则其关键代码如下： <figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br></pre></td><td class="code"><pre><code class="hljs C++"><span class="hljs-function">Status <span class="hljs-title">DBImpl::WriteImpl</span><span class="hljs-params">(<span class="hljs-type">const</span> WriteOptions&amp; write_options,</span></span><br><span class="hljs-params"><span class="hljs-function">                         WriteBatch* my_batch, WriteCallback* callback,</span></span><br><span class="hljs-params"><span class="hljs-function">                         <span class="hljs-type">uint64_t</span>* log_used, <span class="hljs-type">uint64_t</span> log_ref,</span></span><br><span class="hljs-params"><span class="hljs-function">                         <span class="hljs-type">bool</span> disable_memtable, <span class="hljs-type">uint64_t</span>* seq_used,</span></span><br><span class="hljs-params"><span class="hljs-function">                         <span class="hljs-type">size_t</span> batch_cnt,</span></span><br><span class="hljs-params"><span class="hljs-function">                         PreReleaseCallback* pre_release_callback,</span></span><br><span class="hljs-params"><span class="hljs-function">                         PostMemTableCallback* post_memtable_callback)</span> </span>&#123;<br>  ...<br>  <span class="hljs-comment">// 对传入的WriteBatch构建Writer，并将其加入write_thread</span><br>  <span class="hljs-function">WriteThread::Writer <span class="hljs-title">w</span><span class="hljs-params">(write_options, my_batch, callback, log_ref,</span></span><br><span class="hljs-params"><span class="hljs-function">                        disable_memtable, batch_cnt, pre_release_callback,</span></span><br><span class="hljs-params"><span class="hljs-function">                        post_memtable_callback)</span></span>;<br>  write_thread_.<span class="hljs-built_in">JoinBatchGroup</span>(&amp;w);<br>  ...<br>  &#123;<br>    ...<br>    <span class="hljs-comment">// 在写入前作检查和预处理</span><br>    status = <span class="hljs-built_in">PreprocessWrite</span>(write_options, &amp;log_context, &amp;write_context);<br>    ...<br>  &#125;<br>  ...<br>  <span class="hljs-keyword">if</span> (status.<span class="hljs-built_in">ok</span>()) &#123;<br>    <span class="hljs-built_in">PERF_TIMER_GUARD</span>(write_memtable_time);<br>    <span class="hljs-keyword">if</span> (!parallel) &#123;<br>      <span class="hljs-comment">// 非并发插入数据</span><br>      w.status = WriteBatchInternal::<span class="hljs-built_in">InsertInto</span>(<br>          write_group, current_sequence, column_family_memtables_.<span class="hljs-built_in">get</span>(),<br>          &amp;flush_scheduler_, &amp;trim_history_scheduler_,<br>          write_options.ignore_missing_column_families,<br>          <span class="hljs-number">0</span> <span class="hljs-comment">/*recovery_log_number*/</span>, <span class="hljs-keyword">this</span>, parallel, seq_per_batch_,<br>          batch_per_txn_);<br>    &#125; <span class="hljs-keyword">else</span> &#123;<br>      ...<br>    &#125;<br>  ...<br>  &#125;<br>&#125;<br></code></pre></td></tr></table></figure> 这里根据传入的batch对象构建了一个<code>WriteThread::Writer</code>对象，并通过<code>JoinBatchGroup()</code>将其加入到一个Group中，随后会进行WAL的写入。接着<code>PreprocessWrite()</code>会在写入前进行检查和预处理，并可能触发Flush操作。完成上述工作后，<code>WriteBatchInternal::InsertInto()</code>会展开真正的写入工作。以上所都是写入流程中的关键操作，但碍于篇幅，本文将仅继续对<code>WriteBatchInternal::InsertInto()</code>进行深入。</p>
+<h2 id="watchbatch记录写入数据库"><code>WatchBatch</code>记录写入数据库</h2>
+<p>从<code>WriteBatchInternal::InsertInto()</code>开始，才可以算是<code>Put</code>写入真正开始执行的地方。<code>WriteBatchInternal::InsertInto()</code>的实现放在了<code>db/write_batch.cc</code>： <figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br></pre></td><td class="code"><pre><code class="hljs C++"><span class="hljs-function">Status <span class="hljs-title">WriteBatchInternal::InsertInto</span><span class="hljs-params">(</span></span><br><span class="hljs-params"><span class="hljs-function">    WriteThread::Writer* writer, SequenceNumber sequence,</span></span><br><span class="hljs-params"><span class="hljs-function">    ColumnFamilyMemTables* memtables, FlushScheduler* flush_scheduler,</span></span><br><span class="hljs-params"><span class="hljs-function">    TrimHistoryScheduler* trim_history_scheduler,</span></span><br><span class="hljs-params"><span class="hljs-function">    <span class="hljs-type">bool</span> ignore_missing_column_families, <span class="hljs-type">uint64_t</span> log_number, DB* db,</span></span><br><span class="hljs-params"><span class="hljs-function">    <span class="hljs-type">bool</span> concurrent_memtable_writes, <span class="hljs-type">bool</span> seq_per_batch, <span class="hljs-type">size_t</span> batch_cnt,</span></span><br><span class="hljs-params"><span class="hljs-function">    <span class="hljs-type">bool</span> batch_per_txn, <span class="hljs-type">bool</span> hint_per_batch)</span> </span>&#123;<br><span class="hljs-meta">#<span class="hljs-keyword">ifdef</span> NDEBUG</span><br>  (<span class="hljs-type">void</span>)batch_cnt;<br><span class="hljs-meta">#<span class="hljs-keyword">endif</span></span><br>  <span class="hljs-built_in">assert</span>(writer-&gt;<span class="hljs-built_in">ShouldWriteToMemtable</span>());<br>  <span class="hljs-comment">// 构建MemTableInserter</span><br>  <span class="hljs-function">MemTableInserter <span class="hljs-title">inserter</span><span class="hljs-params">(sequence, memtables, flush_scheduler,</span></span><br><span class="hljs-params"><span class="hljs-function">                            trim_history_scheduler,</span></span><br><span class="hljs-params"><span class="hljs-function">                            ignore_missing_column_families, log_number, db,</span></span><br><span class="hljs-params"><span class="hljs-function">                            concurrent_memtable_writes, <span class="hljs-literal">nullptr</span> <span class="hljs-comment">/* prot_info */</span>,</span></span><br><span class="hljs-params"><span class="hljs-function">                            <span class="hljs-literal">nullptr</span> <span class="hljs-comment">/*has_valid_writes*/</span>, seq_per_batch,</span></span><br><span class="hljs-params"><span class="hljs-function">                            batch_per_txn, hint_per_batch)</span></span>;<br>  <span class="hljs-comment">// 设置LSN</span><br>  <span class="hljs-built_in">SetSequence</span>(writer-&gt;batch, sequence);<br>  inserter.<span class="hljs-built_in">set_log_number_ref</span>(writer-&gt;log_ref);<br>  inserter.<span class="hljs-built_in">set_prot_info</span>(writer-&gt;batch-&gt;prot_info_.<span class="hljs-built_in">get</span>());<br>  <span class="hljs-comment">// 开始写入</span><br>  Status s = writer-&gt;batch-&gt;<span class="hljs-built_in">Iterate</span>(&amp;inserter);<br>  <span class="hljs-built_in">assert</span>(!seq_per_batch || batch_cnt != <span class="hljs-number">0</span>);<br>  <span class="hljs-built_in">assert</span>(!seq_per_batch || inserter.<span class="hljs-built_in">sequence</span>() - sequence == batch_cnt);<br>  <span class="hljs-keyword">if</span> (concurrent_memtable_writes) &#123;<br>    inserter.<span class="hljs-built_in">PostProcess</span>();<br>  &#125;<br>  <span class="hljs-keyword">return</span> s;<br>&#125;<br></code></pre></td></tr></table></figure> 函数里根据传入的<code>writer</code>和所有其他信息构建了一个<code>MemTableInserter</code>，并对<code>writer-&gt;batch</code>设置了序列号LSN，最后调用<code>writer-&gt;batch-&gt;Iterate()</code>传入之前构建的<code>inserter</code>开始写入。<code>Iterate()</code>实现如下： <figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br></pre></td><td class="code"><pre><code class="hljs C++"><span class="hljs-function">Status <span class="hljs-title">WriteBatch::Iterate</span><span class="hljs-params">(Handler* handler)</span> <span class="hljs-type">const</span> </span>&#123;<br>  <span class="hljs-keyword">if</span> (rep_.<span class="hljs-built_in">size</span>() &lt; WriteBatchInternal::kHeader) &#123;<br>    <span class="hljs-keyword">return</span> Status::<span class="hljs-built_in">Corruption</span>(<span class="hljs-string">&quot;malformed WriteBatch (too small)&quot;</span>);<br>  &#125;<br><br>  <span class="hljs-keyword">return</span> WriteBatchInternal::<span class="hljs-built_in">Iterate</span>(<span class="hljs-keyword">this</span>, handler, WriteBatchInternal::kHeader,<br>                                     rep_.<span class="hljs-built_in">size</span>());<br>&#125;<br><br><span class="hljs-function">Status <span class="hljs-title">WriteBatchInternal::Iterate</span><span class="hljs-params">(<span class="hljs-type">const</span> WriteBatch* wb,</span></span><br><span class="hljs-params"><span class="hljs-function">                                   WriteBatch::Handler* handler, <span class="hljs-type">size_t</span> begin,</span></span><br><span class="hljs-params"><span class="hljs-function">                                   <span class="hljs-type">size_t</span> end)</span> </span>&#123;<br>  ...<br>  <span class="hljs-comment">// 循环不断读取操作记录并执行</span><br>  <span class="hljs-keyword">while</span> (((s.<span class="hljs-built_in">ok</span>() &amp;&amp; !input.<span class="hljs-built_in">empty</span>()) || <span class="hljs-built_in">UNLIKELY</span>(s.<span class="hljs-built_in">IsTryAgain</span>()))) &#123;<br>    ...<br>    <span class="hljs-keyword">if</span> (<span class="hljs-built_in">LIKELY</span>(!s.<span class="hljs-built_in">IsTryAgain</span>())) &#123;<br>      last_was_try_again = <span class="hljs-literal">false</span>;<br>      tag = <span class="hljs-number">0</span>;<br>      column_family = <span class="hljs-number">0</span>;  <span class="hljs-comment">// default</span><br><br>      <span class="hljs-comment">// 从WriteBatch的rep_中解码读取当前的一条记录</span><br>      s = <span class="hljs-built_in">ReadRecordFromWriteBatch</span>(&amp;input, &amp;tag, &amp;column_family, &amp;key, &amp;value,<br>                                   &amp;blob, &amp;xid);<br>      <span class="hljs-keyword">if</span> (!s.<span class="hljs-built_in">ok</span>()) &#123;<br>        <span class="hljs-keyword">return</span> s;<br>      &#125;<br>    &#125; <span class="hljs-keyword">else</span> &#123;<br>      ...<br>    &#125;<br><br>    <span class="hljs-keyword">switch</span> (tag) &#123;<br>      <span class="hljs-keyword">case</span> kTypeColumnFamilyValue:<br>      <span class="hljs-keyword">case</span> kTypeValue:<br>        <span class="hljs-built_in">assert</span>(wb-&gt;content_flags_.<span class="hljs-built_in">load</span>(std::memory_order_relaxed) &amp;<br>               (ContentFlags::DEFERRED | ContentFlags::HAS_PUT));<br>        <span class="hljs-comment">// 写入数据库</span><br>        s = handler-&gt;<span class="hljs-built_in">PutCF</span>(column_family, key, value);<br>        <span class="hljs-keyword">if</span> (<span class="hljs-built_in">LIKELY</span>(s.<span class="hljs-built_in">ok</span>())) &#123;<br>          empty_batch = <span class="hljs-literal">false</span>;<br>          found++;<br>        &#125;<br>        <span class="hljs-keyword">break</span>;<br>      <span class="hljs-keyword">case</span> ...:<br>        ...<br>    &#125;<br>  &#125;<br><br>  <span class="hljs-keyword">if</span> (!s.<span class="hljs-built_in">ok</span>()) &#123;<br>    <span class="hljs-keyword">return</span> s;<br>  &#125;<br>  <span class="hljs-keyword">if</span> (handler_continue &amp;&amp; whole_batch &amp;&amp;<br>      found != WriteBatchInternal::<span class="hljs-built_in">Count</span>(wb)) &#123;<br>    <span class="hljs-keyword">return</span> Status::<span class="hljs-built_in">Corruption</span>(<span class="hljs-string">&quot;WriteBatch has wrong count&quot;</span>);<br>  &#125; <span class="hljs-keyword">else</span> &#123;<br>    <span class="hljs-keyword">return</span> Status::<span class="hljs-built_in">OK</span>();<br>  &#125;<br>&#125;<br></code></pre></td></tr></table></figure> <code>Iterate()</code>会进行循环处理，在每次循环中通过<code>ReadRecordFromWriteBatch()</code>解码并读取<code>WriteBatch::rep_</code>中最前面的操作记录，获得操作类型<code>tag</code>、列族<code>column_family</code>以及数据<code>key</code>和<code>value</code>等信息。随后进入switch块，利用<code>tag</code>判断进入不同的分支。对于<code>Put</code>操作，会调用<code>MemTableInserter</code>的<code>PutCF()</code>，送入参数列族和键值对: <figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br></pre></td><td class="code"><pre><code class="hljs C++"><span class="hljs-function">Status <span class="hljs-title">PutCF</span><span class="hljs-params">(<span class="hljs-type">uint32_t</span> column_family_id, <span class="hljs-type">const</span> Slice&amp; key,</span></span><br><span class="hljs-params"><span class="hljs-function">               <span class="hljs-type">const</span> Slice&amp; value)</span> <span class="hljs-keyword">override</span> </span>&#123;<br>    <span class="hljs-type">const</span> <span class="hljs-keyword">auto</span>* kv_prot_info = <span class="hljs-built_in">NextProtectionInfo</span>();<br>    Status ret_status;<br>    <span class="hljs-keyword">if</span> (kv_prot_info != <span class="hljs-literal">nullptr</span>) &#123;<br>      <span class="hljs-comment">// Memtable needs seqno, doesn&#x27;t need CF ID</span><br>      <span class="hljs-keyword">auto</span> mem_kv_prot_info =<br>          kv_prot_info-&gt;<span class="hljs-built_in">StripC</span>(column_family_id).<span class="hljs-built_in">ProtectS</span>(sequence_);<br>      ret_status = <span class="hljs-built_in">PutCFImpl</span>(column_family_id, key, value, kTypeValue,<br>                             &amp;mem_kv_prot_info);<br>    &#125; <span class="hljs-keyword">else</span> &#123;<br>      ret_status = <span class="hljs-built_in">PutCFImpl</span>(column_family_id, key, value, kTypeValue,<br>                             <span class="hljs-literal">nullptr</span> <span class="hljs-comment">/* kv_prot_info */</span>);<br>    &#125;<br>    <span class="hljs-comment">// <span class="hljs-doctag">TODO:</span> this assumes that if TryAgain status is returned to the caller,</span><br>    <span class="hljs-comment">// the operation is actually tried again. The proper way to do this is to</span><br>    <span class="hljs-comment">// pass a `try_again` parameter to the operation itself and decrement</span><br>    <span class="hljs-comment">// prot_info_idx_ based on that</span><br>    <span class="hljs-keyword">if</span> (<span class="hljs-built_in">UNLIKELY</span>(ret_status.<span class="hljs-built_in">IsTryAgain</span>())) &#123;<br>      <span class="hljs-built_in">DecrementProtectionInfoIdxForTryAgain</span>();<br>    &#125;<br>    <span class="hljs-keyword">return</span> ret_status;<br>  &#125;<br></code></pre></td></tr></table></figure> 可以看到，在其中再调用<code>PutCFImpl()</code>，其实现关键源码如下： <figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br></pre></td><td class="code"><pre><code class="hljs C++"><span class="hljs-function">Status <span class="hljs-title">PutCFImpl</span><span class="hljs-params">(<span class="hljs-type">uint32_t</span> column_family_id, <span class="hljs-type">const</span> Slice&amp; key,</span></span><br><span class="hljs-params"><span class="hljs-function">                   <span class="hljs-type">const</span> Slice&amp; value, ValueType value_type,</span></span><br><span class="hljs-params"><span class="hljs-function">                   <span class="hljs-type">const</span> ProtectionInfoKVOS64* kv_prot_info)</span> </span>&#123;<br>    ···<br>    Status ret_status;<br>    <span class="hljs-comment">// 通过column_family_id找到列族ColumnFamilyData</span><br>    <span class="hljs-keyword">if</span> (<span class="hljs-built_in">UNLIKELY</span>(!<span class="hljs-built_in">SeekToColumnFamily</span>(column_family_id, &amp;ret_status))) &#123;<br>      ...<br>      <span class="hljs-keyword">return</span> ret_status;<br>    &#125;<br>    <span class="hljs-built_in">assert</span>(ret_status.<span class="hljs-built_in">ok</span>());<br>    <br>    <span class="hljs-comment">// 获取当前列族的MemTable</span><br>    MemTable* mem = cf_mems_-&gt;<span class="hljs-built_in">GetMemTable</span>();<br>    <span class="hljs-keyword">auto</span>* moptions = mem-&gt;<span class="hljs-built_in">GetImmutableMemTableOptions</span>();<br>    <span class="hljs-comment">// inplace_update_support is inconsistent with snapshots, and therefore with</span><br>    <span class="hljs-comment">// any kind of transactions including the ones that use seq_per_batch</span><br>    <span class="hljs-built_in">assert</span>(!seq_per_batch_ || !moptions-&gt;inplace_update_support);<br>    <span class="hljs-keyword">if</span> (!moptions-&gt;inplace_update_support) &#123;<br>      <span class="hljs-comment">// 对MemTable写入数据</span><br>      ret_status =<br>          mem-&gt;<span class="hljs-built_in">Add</span>(sequence_, value_type, key, value, kv_prot_info,<br>                   concurrent_memtable_writes_, <span class="hljs-built_in">get_post_process_info</span>(mem),<br>                   hint_per_batch_ ? &amp;<span class="hljs-built_in">GetHintMap</span>()[mem] : <span class="hljs-literal">nullptr</span>);<br>    &#125; <span class="hljs-keyword">else</span> <span class="hljs-keyword">if</span> (moptions-&gt;inplace_callback == <span class="hljs-literal">nullptr</span> ||<br>               value_type != kTypeValue) &#123;<br>      ...<br>    &#125; <span class="hljs-keyword">else</span> &#123;<br>      ...<br>    &#125;<br><br>    <span class="hljs-keyword">if</span> (<span class="hljs-built_in">UNLIKELY</span>(ret_status.<span class="hljs-built_in">IsTryAgain</span>())) &#123;<br>      <span class="hljs-built_in">assert</span>(seq_per_batch_);<br>      <span class="hljs-type">const</span> <span class="hljs-type">bool</span> kBatchBoundary = <span class="hljs-literal">true</span>;<br>      <span class="hljs-built_in">MaybeAdvanceSeq</span>(kBatchBoundary);<br>    &#125; <span class="hljs-keyword">else</span> <span class="hljs-keyword">if</span> (ret_status.<span class="hljs-built_in">ok</span>()) &#123;<br>      <span class="hljs-built_in">MaybeAdvanceSeq</span>();<br>      <span class="hljs-built_in">CheckMemtableFull</span>();  <span class="hljs-comment">// 检查MemTable是否已满</span><br>    &#125;<br>    <span class="hljs-comment">// optimize for non-recovery mode</span><br>    <span class="hljs-comment">// If `ret_status` is `TryAgain` then the next (successful) try will add</span><br>    <span class="hljs-comment">// the key to the rebuilding transaction object. If `ret_status` is</span><br>    <span class="hljs-comment">// another non-OK `Status`, then the `rebuilding_trx_` will be thrown</span><br>    <span class="hljs-comment">// away. So we only need to add to it when `ret_status.ok()`.</span><br>    <span class="hljs-keyword">if</span> (<span class="hljs-built_in">UNLIKELY</span>(ret_status.<span class="hljs-built_in">ok</span>() &amp;&amp; rebuilding_trx_ != <span class="hljs-literal">nullptr</span>)) &#123;<br>      <span class="hljs-built_in">assert</span>(!write_after_commit_);<br>      <span class="hljs-comment">// TODO(ajkr): propagate `ProtectionInfoKVOS64`.</span><br>      ret_status = WriteBatchInternal::<span class="hljs-built_in">Put</span>(rebuilding_trx_, column_family_id,<br>                                           key, value);<br>    &#125;<br>    <span class="hljs-keyword">return</span> ret_status;<br>  &#125;<br></code></pre></td></tr></table></figure> <code>PutCFImpl()</code>中，<code>SeekToColumnFamily()</code>会根据<code>column_family_id</code>找到对应的列族对象，把指针赋予该<code>MemTableInserter</code>的<code>cf_mems_-&gt;current_</code>变量上，其中<code>cf_mems_</code>是<code>MemTableInserter</code>的一个<code>ColumnFamilyMemTablesImpl*</code>成员变量，<code>current_</code>则是<code>ColumnFamilyMemTablesImpl</code>的一个<code>ColumnFamilyData*</code>成员变量。<br />
+随后，<code>mem = cf_mems_-&gt;GetMemTable()</code>会得到列族的MemTable指针，再通过<code>mem-&gt;Add()</code>完成MemTable的写入工作。具体的写入逻辑不再深究，RocksDB为MemTable提供了多种不同的数据结构实现，每一种的写入逻辑都有不同，但都完成了封装提供<code>Add()</code>接口以供使用。<br />
+写入完成后，<code>MaybeAdvanceSeq()</code>和<code>CheckMemtableFull()</code>会进行收尾工作，增大序列号以及检查MemTable是否已满，若已满则会将其转化为ImmuMemTable，相关内容不在本文进行分析。</p>
+<h2 id="结束">结束</h2>
+<p>以上就是RocksDB在进行<code>Put</code>写入操作时的主要流程和调用关系，至此RocksDB就完成了一个<code>Put</code>写入。对于其他的操作也可以参考以上的流程进行逐步深入分析。<br />
+<strong>最后需要再次强调</strong>，RocksDB真正的写入流程非常复杂，本文仅仅是以<code>Put</code>操作写入到MemTable为目的对源代码进行追踪，因此分析过程中对许多重要操作一笔带过而对简单的流程分析显得有些啰嗦，例如<code>WriteImpl()</code>中不同的分支、<code>PreprocessWrite()</code>可能触发的Flush操作，以及<code>CheckMemtableFull()</code>对MemTable状态的检查，还有过程中许多重要数据结构的相互引用关系，本文都没有作分析。因此，读者可以把本文视为一篇对RocksDB的分析入门引导，目的在于为读者以及自己今后对其它部分的分析提供一份路线图，帮助理解各种事件发生的时间点，而不是对RocksDB核心技术源码的分析。</p>
+
+                
+              </div>
+            
+            <hr/>
+            <div>
+              <div class="post-metas my-3">
+  
+    <div class="post-meta mr-3 d-flex align-items-center">
+      <i class="iconfont icon-category"></i>
+      
+
+<span class="category-chains">
+  
+  
+    
+      <span class="category-chain">
+        
+  <a href="/categories/RocksDB%E6%BA%90%E7%A0%81%E9%98%85%E8%AF%BB/" class="category-chain-item">RocksDB源码阅读</a>
+  
+  
+
+      </span>
+    
+  
+</span>
+
+    </div>
+  
+  
+    <div class="post-meta">
+      <i class="iconfont icon-tags"></i>
+      
+        <a href="/tags/rocksdb/">#rocksdb</a>
+      
+        <a href="/tags/%E6%BA%90%E7%A0%81%E5%89%96%E6%9E%90/">#源码剖析</a>
+      
+    </div>
+  
+</div>
+
+
+              
+  
+
+  <div class="license-box my-3">
+    <div class="license-title">
+      <div>RocksDB | Put流程</div>
+      <div>http://ztorchan.com/2022/10/21/rocksdb-write-process/</div>
+    </div>
+    <div class="license-meta">
+      
+        <div class="license-meta-item">
+          <div>作者</div>
+          <div>ztorchan</div>
+        </div>
+      
+      
+        <div class="license-meta-item license-meta-date">
+          <div>发布于</div>
+          <div>2022年10月21日</div>
+        </div>
+      
+      
+      
+        <div class="license-meta-item">
+          <div>许可协议</div>
+          <div>
+            
+              
+              
+                <a target="_blank" href="https://creativecommons.org/licenses/by/4.0/">
+                  <span class="hint--top hint--rounded" aria-label="BY - 署名">
+                    <i class="iconfont icon-by"></i>
+                  </span>
+                </a>
+              
+            
+          </div>
+        </div>
+      
+    </div>
+    <div class="license-icon iconfont"></div>
+  </div>
+
+
+
+              
+                <div class="post-prevnext my-3">
+                  <article class="post-prev col-6">
+                    
+                    
+                      <a href="/2022/10/31/readpaper-an-efficient-heuristic-procedure-for-partitioning-graphs/" title="论文阅读 | KL算法：An Efficient Heuristic Procedure for Partitioning Graphs">
+                        <i class="iconfont icon-arrowleft"></i>
+                        <span class="hidden-mobile">论文阅读 | KL算法：An Efficient Heuristic Procedure for Partitioning Graphs</span>
+                        <span class="visible-mobile">上一篇</span>
+                      </a>
+                    
+                  </article>
+                  <article class="post-next col-6">
+                    
+                    
+                      <a href="/2022/10/09/HelloWorld/" title="HelloWorld!">
+                        <span class="hidden-mobile">HelloWorld!</span>
+                        <span class="visible-mobile">下一篇</span>
+                        <i class="iconfont icon-arrowright"></i>
+                      </a>
+                    
+                  </article>
+                </div>
+              
+            </div>
+
+            
+          </article>
+        </div>
+      </div>
+    </div>
+
+    <div class="side-col d-none d-lg-block col-lg-2">
+      
+  <aside class="sidebar" style="margin-left: -1rem">
+    <div id="toc">
+  <p class="toc-header">
+    <i class="iconfont icon-list"></i>
+    <span>目录</span>
+  </p>
+  <div class="toc-body" id="toc-body"></div>
+</div>
+
+
+
+  </aside>
+
+
+    </div>
+  </div>
+</div>
+
+
+
+
+
+  
+
+
+
+  
+
+
+
+  
+
+
+
+  
+
+
+
+  
+
+
+
+
+
+
+
+    
+
+    
+      <a id="scroll-top-button" aria-label="TOP" href="#" role="button">
+        <i class="iconfont icon-arrowup" aria-hidden="true"></i>
+      </a>
+    
+
+    
+      <div class="modal fade" id="modalSearch" tabindex="-1" role="dialog" aria-labelledby="ModalLabel"
+     aria-hidden="true">
+  <div class="modal-dialog modal-dialog-scrollable modal-lg" role="document">
+    <div class="modal-content">
+      <div class="modal-header text-center">
+        <h4 class="modal-title w-100 font-weight-bold">搜索</h4>
+        <button type="button" id="local-search-close" class="close" data-dismiss="modal" aria-label="Close">
+          <span aria-hidden="true">&times;</span>
+        </button>
+      </div>
+      <div class="modal-body mx-3">
+        <div class="md-form mb-5">
+          <input type="text" id="local-search-input" class="form-control validate">
+          <label data-error="x" data-success="v" for="local-search-input">关键词</label>
+        </div>
+        <div class="list-group" id="local-search-result"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+    
+
+    
+  </main>
+
+  <footer>
+    <div class="footer-inner">
+  
+  
+  
+  
+</div>
+
+  </footer>
+
+  <!-- Scripts -->
+  
+  <script  src="https://lib.baomitu.com/nprogress/0.2.0/nprogress.min.js" ></script>
+  <link  rel="stylesheet" href="https://lib.baomitu.com/nprogress/0.2.0/nprogress.min.css" />
+
+  <script>
+    NProgress.configure({"showSpinner":false,"trickleSpeed":100})
+    NProgress.start()
+    window.addEventListener('load', function() {
+      NProgress.done();
+    })
+  </script>
+
+
+<script  src="https://lib.baomitu.com/jquery/3.6.0/jquery.min.js" ></script>
+<script  src="https://lib.baomitu.com/twitter-bootstrap/4.6.1/js/bootstrap.min.js" ></script>
+<script  src="/js/events.js" ></script>
+<script  src="/js/plugins.js" ></script>
+
+
+  <script  src="https://lib.baomitu.com/typed.js/2.0.12/typed.min.js" ></script>
+  <script>
+    (function (window, document) {
+      var typing = Fluid.plugins.typing;
+      var subtitle = document.getElementById('subtitle');
+      if (!subtitle || !typing) {
+        return;
+      }
+      var text = subtitle.getAttribute('data-typed-text');
+      
+        typing(text);
+      
+    })(window, document);
+  </script>
+
+
+
+
+  
+    <script  src="/js/img-lazyload.js" ></script>
+  
+
+
+
+
+  
+<script>
+  Fluid.utils.createScript('https://lib.baomitu.com/tocbot/4.18.2/tocbot.min.js', function() {
+    var toc = jQuery('#toc');
+    if (toc.length === 0 || !window.tocbot) { return; }
+    var boardCtn = jQuery('#board-ctn');
+    var boardTop = boardCtn.offset().top;
+
+    window.tocbot.init(Object.assign({
+      tocSelector     : '#toc-body',
+      contentSelector : '.markdown-body',
+      linkClass       : 'tocbot-link',
+      activeLinkClass : 'tocbot-active-link',
+      listClass       : 'tocbot-list',
+      isCollapsedClass: 'tocbot-is-collapsed',
+      collapsibleClass: 'tocbot-is-collapsible',
+      scrollSmooth    : true,
+      includeTitleTags: true,
+      headingsOffset  : -boardTop,
+    }, CONFIG.toc));
+    if (toc.find('.toc-list-item').length > 0) {
+      toc.css('visibility', 'visible');
+    }
+
+    Fluid.events.registerRefreshCallback(function() {
+      if ('tocbot' in window) {
+        tocbot.refresh();
+        var toc = jQuery('#toc');
+        if (toc.length === 0 || !tocbot) {
+          return;
+        }
+        if (toc.find('.toc-list-item').length > 0) {
+          toc.css('visibility', 'visible');
+        }
+      }
+    });
+  });
+</script>
+
+
+  <script src=https://lib.baomitu.com/clipboard.js/2.0.11/clipboard.min.js></script>
+
+  <script>Fluid.plugins.codeWidget();</script>
+
+
+  
+<script>
+  Fluid.utils.createScript('https://lib.baomitu.com/anchor-js/4.3.1/anchor.min.js', function() {
+    window.anchors.options = {
+      placement: CONFIG.anchorjs.placement,
+      visible  : CONFIG.anchorjs.visible
+    };
+    if (CONFIG.anchorjs.icon) {
+      window.anchors.options.icon = CONFIG.anchorjs.icon;
+    }
+    var el = (CONFIG.anchorjs.element || 'h1,h2,h3,h4,h5,h6').split(',');
+    var res = [];
+    for (var item of el) {
+      res.push('.markdown-body > ' + item.trim());
+    }
+    if (CONFIG.anchorjs.placement === 'left') {
+      window.anchors.options.class = 'anchorjs-link-left';
+    }
+    window.anchors.add(res.join(', '));
+
+    Fluid.events.registerRefreshCallback(function() {
+      if ('anchors' in window) {
+        anchors.removeAll();
+        var el = (CONFIG.anchorjs.element || 'h1,h2,h3,h4,h5,h6').split(',');
+        var res = [];
+        for (var item of el) {
+          res.push('.markdown-body > ' + item.trim());
+        }
+        if (CONFIG.anchorjs.placement === 'left') {
+          anchors.options.class = 'anchorjs-link-left';
+        }
+        anchors.add(res.join(', '));
+      }
+    });
+  });
+</script>
+
+
+  
+<script>
+  Fluid.utils.createScript('https://lib.baomitu.com/fancybox/3.5.7/jquery.fancybox.min.js', function() {
+    Fluid.plugins.fancyBox();
+  });
+</script>
+
+
+  <script>Fluid.plugins.imageCaption();</script>
+
+  <script  src="/js/local-search.js" ></script>
+
+  <script defer src="https://busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js" ></script>
+
+
+
+
+
+<!-- 主题的启动项，将它保持在最底部 -->
+<!-- the boot of the theme, keep it at the bottom -->
+<script  src="/js/boot.js" ></script>
+
+
+  
+
+  <noscript>
+    <div class="noscript-warning">博客在允许 JavaScript 运行的环境下浏览效果更佳</div>
+  </noscript>
+</body>
+</html>
