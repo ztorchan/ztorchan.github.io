@@ -12,6 +12,8 @@ math: true
 
 文章出自香港中文大学，华为云左鹏飞参与指导，发表于SOSP\`23。这项研究是作者在华为云实习期间完成的，主要工作是设计了一种面向分离式内存架构的缓存系统。缓存可能是分离式内存这种大内存系统最具实用价值的应用方向了，在我看来这篇论文选题上具备比较高的实践价值。
 
+<!-- more -->
+
 *Paper Link*: [https://dl.acm.org/doi/10.1145/3600006.3613144](https://dl.acm.org/doi/10.1145/3600006.3613144)
 
 *Open source*: [https://github.com/dmemsys/Ditto](https://github.com/dmemsys/Ditto)
