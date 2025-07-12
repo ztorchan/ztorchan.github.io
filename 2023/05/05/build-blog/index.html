@@ -508,6 +508,37 @@
             </div>
 
             
+  
+  
+    <article id="comments" lazyload>
+      
+  <div id="valine"></div>
+  <script type="text/javascript">
+    Fluid.utils.loadComments('#valine', function() {
+      Fluid.utils.createScript('https://lib.baomitu.com/valine/1.5.1/Valine.min.js', function() {
+        var options = Object.assign(
+          {"appId":"YuytDEpyTHy9DT537lZ3pK2h-gzGzoHsz","appKey":"ikKqcBQQMPUMOx6c8fWpyT3q","path":"window.location.pathname","placeholder":"给我留言吧","avatar":"hide","meta":["nick","mail"],"requiredFields":[],"pageSize":10,"lang":"zh-CN","highlight":true,"recordIP":false,"serverURLs":"","emojiCDN":"https://cdn.jsdelivr.net/gh/walinejs/emojis/tieba/","emojiMaps":{"同意":"tieba_agree.png","生气":"tieba_angry.png","不高兴":"tieba_annoyed.png","滑稽":"tieba_antic.png","黑线":"tieba_awkward.png","偷笑":"tieba_chuckle.png","张口闭眼":"tieba_crazy.png","大哭":"tieba_cry.png","可怜楚楚":"tieba_cute.png","酸爽":"tieba_dizzy_face.png","疑问":"tieba_doubt.png","委屈":"tieba_grievance.png","爱心眼":"tieba_heart_eyes.png","大汗":"tieba_huge_sweat.png","脸肿":"tieba_hurt.png","笑哭":"tieba_joy.png","哈哈":"tieba_laugh.png","鄙视":"tieba_look_down.png","可爱":"tieba_lovely.png","挖鼻":"tieba_pick_nose.png","大怒":"tieba_rage.png","疲倦":"tieba_rolling_eyes.png","满足":"tieba_satisfied.png","害羞":"tieba_shy.png","睡觉":"tieba_sleep.png","你懂的":"tieba_smirk.png","吓哭":"tieba_sob.png","不好意思":"tieba_sorry.png","酷":"tieba_sunglasses.png","啊":"tieba_surprised.png","汗":"tieba_sweat.png","吐":"tieba_vomit.png","喷水":"tieba_vomit_water.png","眨眼":"tieba_wink.png","哇":"tieba_wow.png","美味":"tieba_yum.png","香蕉":"tieba_banana.png","蛋糕":"tieba_cake.png","礼物":"tieba_gift.png","蜡烛":"tieba_candle.png","咖啡":"tieba_coffee.png","药丸":"tieba_pill.png","红领巾":"tieba_red_scarf.png","玫瑰":"tieba_rose.png","沙发":"tieba_sofa.png","便便":"tieba_shit.png","厕纸":"tieba_toilet_paper.png","彩虹":"tieba_rainbow.png","月亮":"tieba_moon.png","爱心":"tieba_heart.png","OK":"tieba_ok.png","耶":"tieba_v.png","大拇指":"tieba_thumbsup.png","切克闹":"tieba_metal.png"},"enableQQ":false},
+          {
+            el: "#valine",
+            path: window.location.pathname
+          }
+        )
+        new Valine(options);
+        Fluid.utils.waitElementVisible('#valine .vcontent', () => {
+          var imgSelector = '#valine .vcontent img:not(.vemoji)';
+          Fluid.plugins.imageCaption(imgSelector);
+          Fluid.plugins.fancyBox(imgSelector);
+        })
+      });
+    });
+  </script>
+  <noscript>Please enable JavaScript to view the comments</noscript>
+
+
+    </article>
+  
+
+
           </article>
         </div>
       </div>
