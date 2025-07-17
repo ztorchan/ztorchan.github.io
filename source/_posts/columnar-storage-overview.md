@@ -107,7 +107,7 @@ Apache Parquet和Apache ORC的存储格式本质上都基于PAX模型构建，�
 
 </div>
 
-从图5中，我们可以看出二者的设计在大体上是相似的。Footer中包含了文件级别（例如表结构等）和Row Group级别（例如偏移和Zone Map统计等）的元数据，它作为文件访问的起点，为下一步的数据检索提供了指引。多个Row Group组成了文件的主体数据区，每个Row Group内部遵循PAX模型的设计原理，通过Column Chunk对列数据进行物理组织。
+从图5中，我们可以看出二者的设计在大体上是相似的。Footer中包含了文件级别（例如表结构等）和Row Group级别（例如偏移和Zone Map统计等）的元数据，它作为文件访问的起点，为下一步的数据检索提供了指引。多个Row Group组成了文件的主体数据区，每个Row Group内部遵循PAX模型的设计原理，通过Column Chunk对列数据进行物理组织。对于Parquet而言，Column Chunk还会进一步划分为多个Page。
 
 尽管在存储格式上如此相似，二者在对如何划分Row Group采取了不同的选择：
 - Parquet基于行数来确定Row Group的大小，以此确保单个Row Group有足够多行数据来支持高效的向量查询，但在内存开销上却不可控（因为Column Chunk是I/O单元，更大的Row Group也意味着更大的Column Chunk）
@@ -133,14 +133,14 @@ Bloom Filter是Parquet和ORC额外的可选过滤器。Parquet为每一个Column
 
 Parquet的嵌套数据结构基于[Dremel](https://dl.acm.org/doi/10.14778/1920841.1920886)。如图6所示，Parquet仅仅将嵌套数据的叶子节点作为独立的数据列进行存储，并为每个数据值绑定两个整型参数：Repetition Level（R）和Definition Level（L）：
 
-- Repetition Level表示当前数据值和前一个数据值在嵌套路径的重复深度（例如列表切换时发生层级变化）
-- Definition Level则仅对缺失值有效，表示当前数据缺失的发生层级
+- Repetition Level表示当前数据值和前一个数据值在嵌套路径的重复深度（例如图中第一行数据中的tag列，b与其前面的a共享同一个tags，则R为1；而接下来的缺失值和c都与其前面的值属于不同的行，则R为0）
+- Definition Level则仅对缺失值有效，表示当前缺失数据最深的有值层级，也即数据缺失发生层级的前一层级（例如图中第二行数据，其name.first为缺失值，但name仍然存在，则D值为1）
 
 这两个参数通过编码重复类型（repeated）的层级变化与可选类型（optional）的空值状态，完整描述了复杂嵌套结构。基于这两个参数序列，Parquet得以通过一个有限状态机实现列式存储数据向原始半结构化数据的重构。
 
 ORC的嵌套数据结构则更为直接。嵌套数据结构上的每一个叶子节点都会成为独立存储的数据列，并为两类特殊数据绑定标识。对于重复类型数据，额外存储整型数据标记列表项数量；对于可选类型数据，则维护布尔值标记其存在状态。
 
-相较而言，Parquet的方案能够在重构数据时减少读取的列数，但由于每个数据列都要绑定Reptition Level和Definition Level，因此可能会导致更高的存储开销。
+相较而言，由于Parquet的方案只需实际存储叶子节点的列数据，它能够在重构数据时减少读取的列，并且在嵌套结构较为复杂、层次较深的场景下，存储开销较小。但同时，由于Parquet为每个数据列都绑定了Reptition Level和Definition Level，在嵌套结构较简单的情况下，它的存储开销反而更高。
 
 ## 数据压缩与编码
 
