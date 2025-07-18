@@ -32,7 +32,7 @@
 <meta property="og:image" content="http://ztorchan.com/2025/07/07/columnar-storage-overview/fig7-before_arrow.png">
 <meta property="og:image" content="http://ztorchan.com/2025/07/07/columnar-storage-overview/fig8-after_arrow.png">
 <meta property="article:published_time" content="2025-07-06T16:49:02.000Z">
-<meta property="article:modified_time" content="2025-07-17T17:03:18.898Z">
+<meta property="article:modified_time" content="2025-07-18T16:04:58.042Z">
 <meta property="article:author" content="ztorchan">
 <meta property="article:tag" content="列式存储">
 <meta property="article:tag" content="Parquet">
@@ -472,7 +472,11 @@
 </table>
 </div>
 <p>从图5中，我们可以看出二者的设计在大体上是相似的。Footer中包含了文件级别（例如表结构等）和Row Group级别（例如偏移和Zone Map统计等）的元数据，它作为文件访问的起点，为下一步的数据检索提供了指引。多个Row Group组成了文件的主体数据区，每个Row Group内部遵循PAX模型的设计原理，通过Column Chunk对列数据进行物理组织。对于Parquet而言，Column Chunk还会进一步划分为多个Page。</p>
-<p>尽管在存储格式上如此相似，二者在对如何划分Row Group采取了不同的选择： - Parquet基于行数来确定Row Group的大小，以此确保单个Row Group有足够多行数据来支持高效的向量查询，但在内存开销上却不可控（因为Column Chunk是I/O单元，更大的Row Group也意味着更大的Column Chunk） - ORC使用了固定物理存储大小的Row Group以控制内存开销，但当遇到宽表场景（单行含数万列）时，单个Row Group内的有效行数大幅减少，反而降低了批处理效率。</p>
+<p>尽管在存储格式上如此相似，二者在对如何划分Row Group采取了不同的选择：</p>
+<ul>
+<li><p>Parquet基于行数来确定Row Group的大小，以此确保单个Row Group有足够多行数据来支持高效的向量查询，但在内存开销上却不可控（因为Column Chunk是I/O单元，更大的Row Group也意味着更大的Column Chunk）</p></li>
+<li><p>ORC使用了固定物理存储大小的Row Group以控制内存开销，但当遇到宽表场景（单行含数万列）时，单个Row Group内的有效行数大幅减少，反而降低了批处理效率。</p></li>
+</ul>
 <h2 id="过滤器">过滤器</h2>
 <p>过滤器是实现高效查询的核心机制，它通过判断目标数据在特定存储单元中的存在性，避免不必要的I/O操作。</p>
 <p>最常用的过滤器有两种：（1）<strong>​​Zone Map</strong>​​：它存储了指定存储单元的关键统计指标——最大值、最小值和数据条目总数，通过判断目标值是否落在最小-最大区间内，即可高效预判该存储单元是否存在目标数据；（2）<strong>​​Bloom Filter</strong>​​：它是基于概率的位映射过滤器，以极小的存储空间代价存储了数据"指纹"。当查询特定键值时，通过多次哈希计算检测对应比特位状态，若存在未激活位则确认数据必然不存在，反之则有较大概率存在。</p>
