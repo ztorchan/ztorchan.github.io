@@ -1,0 +1,890 @@
+
+
+<!DOCTYPE html>
+<html lang="zh-CN" data-default-color-scheme=light>
+
+
+
+<head>
+  <meta charset="UTF-8">
+  <link rel="apple-touch-icon" sizes="76x76" href="/img/icon/t.png">
+  <link rel="icon" href="/img/icon/t.png">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, shrink-to-fit=no">
+  <meta http-equiv="x-ua-compatible" content="ie=edge">
+  
+  <meta name="theme-color" content="#2f4154">
+  <meta name="author" content="ztorchan">
+  <meta name="keywords" content="">
+  
+    <meta name="description" content="特别说明：本文所讨论的技术设计均基于Lance v2和Lance v2.1  在从Parquet到Arrow——列式存储概览一文中，我们回顾了过去十余年主流的开源列式存储格式。正如前文所述，数据存储的发展始终顺应着上层应用I&#x2F;O模式的变迁。近年来，随着AI技术的爆发式发展，我们迎来了比大数据时代还“大”的AI时代，对数据I&#x2F;O的需求也随之发生深刻变革。这使得原有的列式存储方案在某些场景下面临新的">
+<meta property="og:type" content="article">
+<meta property="og:title" content="AI时代的多模态列式存储——LanceDB技术概览">
+<meta property="og:url" content="http://ztorchan.com/2025/07/21/lance-overview/index.html">
+<meta property="og:site_name" content="ZTorchan">
+<meta property="og:description" content="特别说明：本文所讨论的技术设计均基于Lance v2和Lance v2.1  在从Parquet到Arrow——列式存储概览一文中，我们回顾了过去十余年主流的开源列式存储格式。正如前文所述，数据存储的发展始终顺应着上层应用I&#x2F;O模式的变迁。近年来，随着AI技术的爆发式发展，我们迎来了比大数据时代还“大”的AI时代，对数据I&#x2F;O的需求也随之发生深刻变革。这使得原有的列式存储方案在某些场景下面临新的">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="http://ztorchan.com/2025/07/21/lance-overview/fig1-bigdata_framework_level.jpg">
+<meta property="og:image" content="http://ztorchan.com/2025/07/21/lance-overview/fig2-point_lookups.png">
+<meta property="og:image" content="http://ztorchan.com/2025/07/21/lance-overview/fig3-wide_columns.png">
+<meta property="og:image" content="http://ztorchan.com/2025/07/21/lance-overview/fig4-wide_schemas.png">
+<meta property="og:image" content="http://ztorchan.com/2025/07/21/lance-overview/fig5-lance_data_format.png">
+<meta property="og:image" content="http://ztorchan.com/2025/07/21/lance-overview/fig6-traditional_column_storage_read.png">
+<meta property="og:image" content="http://ztorchan.com/2025/07/21/lance-overview/fig7-inefficient_io_decode.png">
+<meta property="og:image" content="http://ztorchan.com/2025/07/21/lance-overview/fig8-efficient_io_decode.png">
+<meta property="og:image" content="http://ztorchan.com/2025/07/21/lance-overview/fig9-lance_read.png">
+<meta property="og:image" content="http://ztorchan.com/2025/07/21/lance-overview/fig10-lance_read_schedule.png">
+<meta property="article:published_time" content="2025-07-20T16:52:47.000Z">
+<meta property="article:modified_time" content="2025-07-20T16:52:47.328Z">
+<meta property="article:author" content="ztorchan">
+<meta property="article:tag" content="列式存储">
+<meta property="article:tag" content="Lance">
+<meta property="article:tag" content="LanceDB">
+<meta property="article:tag" content="AI存储">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="http://ztorchan.com/2025/07/21/lance-overview/fig1-bigdata_framework_level.jpg">
+  
+  
+    <meta name="referrer" content="no-referrer-when-downgrade">
+  
+  
+  <title>AI时代的多模态列式存储——LanceDB技术概览 - ZTorchan</title>
+
+  <link  rel="stylesheet" href="https://lib.baomitu.com/twitter-bootstrap/4.6.1/css/bootstrap.min.css" />
+
+
+
+  <link  rel="stylesheet" href="https://lib.baomitu.com/github-markdown-css/4.0.0/github-markdown.min.css" />
+
+  <link  rel="stylesheet" href="https://lib.baomitu.com/hint.css/2.7.0/hint.min.css" />
+
+  <link  rel="stylesheet" href="https://lib.baomitu.com/fancybox/3.5.7/jquery.fancybox.min.css" />
+
+
+
+<!-- 主题依赖的图标库，不要自行修改 -->
+<!-- Do not modify the link that theme dependent icons -->
+
+<link rel="stylesheet" href="//at.alicdn.com/t/font_1749284_hj8rtnfg7um.css">
+
+
+
+<link rel="stylesheet" href="//at.alicdn.com/t/font_1736178_lbnruvf0jn.css">
+
+
+<link  rel="stylesheet" href="/css/main.css" />
+
+
+  <link id="highlight-css" rel="stylesheet" href="/css/highlight.css" />
+  
+    <link id="highlight-css-dark" rel="stylesheet" href="/css/highlight-dark.css" />
+  
+
+
+
+
+  <script id="fluid-configs">
+    var Fluid = window.Fluid || {};
+    Fluid.ctx = Object.assign({}, Fluid.ctx)
+    var CONFIG = {"hostname":"ztorchan.com","root":"/","version":"1.9.4","typing":{"enable":true,"typeSpeed":50,"cursorChar":"_","loop":false,"scope":[]},"anchorjs":{"enable":true,"element":"h1,h2,h3,h4,h5,h6","placement":"left","visible":"hover","icon":""},"progressbar":{"enable":true,"height_px":3,"color":"#29d","options":{"showSpinner":false,"trickleSpeed":100}},"code_language":{"enable":true,"default":"TEXT"},"copy_btn":true,"image_caption":{"enable":true},"image_zoom":{"enable":true,"img_url_replace":["",""]},"toc":{"enable":true,"placement":"right","headingSelector":"h1,h2,h3,h4,h5,h6","collapseDepth":0},"lazyload":{"enable":true,"loading_img":"/img/loading.gif","onlypost":false,"offset_factor":2},"web_analytics":{"enable":true,"follow_dnt":false,"baidu":null,"google":null,"gtag":null,"tencent":{"sid":null,"cid":null},"woyaola":null,"cnzz":null,"leancloud":{"app_id":null,"app_key":null,"server_url":null,"path":"window.location.pathname","ignore_local":false}},"search_path":"/local-search.xml"};
+
+    if (CONFIG.web_analytics.follow_dnt) {
+      var dntVal = navigator.doNotTrack || window.doNotTrack || navigator.msDoNotTrack;
+      Fluid.ctx.dnt = dntVal && (dntVal.startsWith('1') || dntVal.startsWith('yes') || dntVal.startsWith('on'));
+    }
+  </script>
+  <script  src="/js/utils.js" ></script>
+  <script  src="/js/color-schema.js" ></script>
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+
+
+  
+<meta name="generator" content="Hexo 6.3.0"></head>
+
+
+<body>
+  
+
+  <header>
+    
+
+<div class="header-inner" style="height: 35vh;">
+  <nav id="navbar" class="navbar fixed-top  navbar-expand-lg navbar-dark scrolling-navbar">
+  <div class="container">
+    <a class="navbar-brand" href="/">
+      <strong>ZTorchan</strong>
+    </a>
+
+    <button id="navbar-toggler-btn" class="navbar-toggler" type="button" data-toggle="collapse"
+            data-target="#navbarSupportedContent"
+            aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
+      <div class="animated-icon"><span></span><span></span><span></span></div>
+    </button>
+
+    <!-- Collapsible content -->
+    <div class="collapse navbar-collapse" id="navbarSupportedContent">
+      <ul class="navbar-nav ml-auto text-center">
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/">
+                <i class="iconfont icon-home-fill"></i>
+                <span>首页</span>
+              </a>
+            </li>
+          
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/archives/">
+                <i class="iconfont icon-archive-fill"></i>
+                <span>归档</span>
+              </a>
+            </li>
+          
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/categories/">
+                <i class="iconfont icon-category-fill"></i>
+                <span>分类</span>
+              </a>
+            </li>
+          
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/tags/">
+                <i class="iconfont icon-tags-fill"></i>
+                <span>标签</span>
+              </a>
+            </li>
+          
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/resource/">
+                <i class="iconfont icon-th-large"></i>
+                <span>资源</span>
+              </a>
+            </li>
+          
+        
+          
+          
+          
+          
+            <li class="nav-item dropdown">
+              <a class="nav-link dropdown-toggle" target="_self" href="javascript:;" role="button"
+                 data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                <i class="iconfont icon-cliplist"></i>
+                <span>清单</span>
+              </a>
+              <div class="dropdown-menu" aria-labelledby="navbarDropdown">
+                
+                  
+                  
+                  
+                  <a class="dropdown-item" href="/books/">
+                    <i class="iconfont icon-book"></i>
+                    <span>读书</span>
+                  </a>
+                
+                  
+                  
+                  
+                  <a class="dropdown-item" href="/movies/">
+                    <i class="iconfont icon-youtube-fill"></i>
+                    <span>电影</span>
+                  </a>
+                
+                  
+                  
+                  
+                  <a class="dropdown-item" href="/games/">
+                    <i class="iconfont icon-switch-fill"></i>
+                    <span>游戏</span>
+                  </a>
+                
+              </div>
+            </li>
+          
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/guestbook/">
+                <i class="iconfont icon-speakernotes"></i>
+                <span>留言板</span>
+              </a>
+            </li>
+          
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/links/">
+                <i class="iconfont icon-link-fill"></i>
+                <span>友链</span>
+              </a>
+            </li>
+          
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/about/">
+                <i class="iconfont icon-user-fill"></i>
+                <span>关于</span>
+              </a>
+            </li>
+          
+        
+        
+          <li class="nav-item" id="search-btn">
+            <a class="nav-link" target="_self" href="javascript:;" data-toggle="modal" data-target="#modalSearch" aria-label="Search">
+              <i class="iconfont icon-search"></i>
+            </a>
+          </li>
+          
+        
+        
+          <li class="nav-item" id="color-toggle-btn">
+            <a class="nav-link" target="_self" href="javascript:;" aria-label="Color Toggle">
+              <i class="iconfont icon-dark" id="color-toggle-icon"></i>
+            </a>
+          </li>
+        
+      </ul>
+    </div>
+  </div>
+</nav>
+
+  
+
+<div id="banner" class="banner" parallax=true
+     style="background: url('/img/bg/black.jpg') no-repeat center center; background-size: cover;">
+  <div class="full-bg-img">
+    <div class="mask flex-center" style="background-color: rgba(0, 0, 0, 0.3)">
+      <div class="banner-text text-center fade-in-up">
+        <div class="h2">
+          
+            <span id="subtitle" data-typed-text="AI时代的多模态列式存储——LanceDB技术概览"></span>
+          
+        </div>
+
+        
+          
+  <div class="mt-3">
+    
+    
+      <span class="post-meta">
+        <i class="iconfont icon-date-fill" aria-hidden="true"></i>
+        <time datetime="2025-07-21 00:52" pubdate>
+          2025年7月21日 凌晨
+        </time>
+      </span>
+    
+  </div>
+
+  <div class="mt-1">
+    
+      <span class="post-meta mr-2">
+        <i class="iconfont icon-chart"></i>
+        
+          4.9k 字
+        
+      </span>
+    
+
+    
+
+    
+    
+      
+        <span id="busuanzi_container_page_pv" style="display: none">
+          <i class="iconfont icon-eye" aria-hidden="true"></i>
+          <span id="busuanzi_value_page_pv"></span> 次
+        </span>
+        
+      
+    
+  </div>
+
+
+        
+      </div>
+
+      
+    </div>
+  </div>
+</div>
+
+</div>
+
+  </header>
+
+  <main>
+    
+      
+
+<div class="container-fluid nopadding-x">
+  <div class="row nomargin-x">
+    <div class="side-col d-none d-lg-block col-lg-2">
+      
+
+    </div>
+
+    <div class="col-lg-8 nopadding-x-md">
+      <div class="container nopadding-x-md" id="board-ctn">
+        <div id="board">
+          <article class="post-content mx-auto">
+            <!-- SEO header -->
+            <h1 style="display: none">AI时代的多模态列式存储——LanceDB技术概览</h1>
+            
+            
+              <div class="markdown-body">
+                
+                <blockquote>
+<p><strong>特别说明：本文所讨论的技术设计均基于Lance v2和Lance v2.1</strong></p>
+</blockquote>
+<p>在<a href="https://ztorchan.com/2025/07/07/columnar-storage-overview/"><em>从Parquet到Arrow——列式存储概览</em></a>一文中，我们回顾了过去十余年主流的开源列式存储格式。正如前文所述，数据存储的发展始终顺应着上层应用I/O模式的变迁。近年来，随着AI技术的爆发式发展，我们迎来了比大数据时代还“大”的AI时代，对数据I/O的需求也随之发生深刻变革。这使得原有的列式存储方案在某些场景下面临新的挑战。LanceDB应运而生，旨在应对这些挑战。本文将对LanceDB进行技术概览，探讨AI时代数据I/O面临的新问题，以及LanceDB的解决之道。</p>
+<span id="more"></span>
+<h1 id="lancedb是什么">LanceDB是什么？</h1>
+<!-- https://mp.weixin.qq.com/s/nerkvBtFo5BM68dacsq17A -->
+<!-- https://blog.csdn.net/younger_china/article/details/125905449 -->
+<p>LanceDB的愿景是<strong>为AI时代构建统一的数据湖平台，满足多模态数据的管理需求</strong>。随着AI时代的到来，图像、视频和音频等多模态数据的数据量及其访问需求急剧增长。然而，传统数据湖解决方案在高效管理这类数据时面临挑战，迫使相关企业不得不维护多个独立的数据系统，并通过构建复杂的数据交互链路来勉强支持多种模态数据的管理，效率低下。LanceDB正是在此背景下诞生，旨在弥补传统数据湖在多模态数据管理上的不足，为AI场景下的复杂数据提供统一高效的管理平台。</p>
+<figure>
+<img src="fig1-bigdata_framework_level.jpg" srcset="/img/loading.gif" lazyload alt="" /><figcaption>图1 大数据框架层次</figcaption>
+</figure>
+<p>LanceDB构建在其开发的新型开源列式存储格式Lance之上，它高效管理多模态数据的能力正得益于Lance格式的针对性设计。如图1所示，Lance格式兼具了数据格式（Data Format）层和表格式（Table Format）层的特性，与传统Parquet/ORC数据格式和MetaStore/Iceberg表格式的单一层级功能有着本质区别。Lance格式不仅保持了高效扫描访问性能，还支持快速随机点查询。同时，它在添加新数据列时无需复制旧数据，实现了真正的Zero-cost Data Evolution特性。这些独特的特性和优势使Lance格式能够充分适应AI时代的数据负载需求，也支撑LanceDB成为当前领先的多模态数据湖平台解决方案。​</p>
+<h1 id="ai工作负载的特点">AI工作负载的特点</h1>
+<p>再次强调，存储设计必须基于上层负载的访问模式进行。在开始后续的技术探讨之前，让我们先分析一下现代AI工作负载的特征及其遇到的问题。​</p>
+<h2 id="大量的点查询">大量的点查询</h2>
+<p>​​点查询​​指单次请求仅访问少量数据行的查询操作。当借助二级索引执行此类查询时，目标数据行往往呈​​离散分布​​，不属于同一个Page​。对于AI工作负载来说，无论是训练阶段还是推理阶段，数据搜索都是常用且重要的过程。为此，LanceDB​​从设计之初即定位为一个支持多样化搜索的向量数据库​​，例如语义搜索（Semantic Search）与全文本搜索（Full Text Search, FST）是其支持的核心搜索方式。​​这些搜索过程在底层最终都会转化为点查询操作，可想而知点查询是LanceDB无可避免的主要查询方式​​。</p>
+<figure>
+<img src="fig2-point_lookups.png" srcset="/img/loading.gif" lazyload alt="" /><figcaption>图2 列式存储点查询（以Parquet为例）</figcaption>
+</figure>
+<p>然而，传统 Parquet 格式在处理点查询时存在显著瓶颈，主要原因可归结为以下两方面：</p>
+<ol type="1">
+<li><p>​<strong>​海量随机I/O带来的效率困境</strong>​​：​​点查询会触发大量​的随机I/O请求，这种​​访问模式对存储系统极不友好​​。​​尤其对于当前主流的、基于 S3 等云存储构建的数据湖架构而言，其有限的IOPS能力难以高效应对此类海量随机I/O负载。​​</p></li>
+<li><p>​<strong>​缺乏“可切片性”导致的冗余读取</strong>​​：​​更深层次的原因在于，​​Parquet 的数据编码设计本身不具备“可切片性”​，即它无法单独提取并解码​​目标数据片段。为了成功解码所需数据，系统​​不得不读取目标数据所在的整个Page甚至Column Chunk​​。​​这种必须读取冗余大块数据的机制，在面对仅需少量数据的点查询时，必然会显著增加处理延迟和I/O开销。​</p></li>
+</ol>
+<h2 id="宽列">宽列</h2>
+<p>传统的大数据工作负载通常处理的是结构相对简单、尺寸较小的数据列，例如整数、浮点数或长度有限的字符串等基础数据类型。即使是其中最大的字符串，其尺寸通常也处于可控范围。然而，当下以AI工作负载更关注图像、音频、视频等多模态数据。这些工作负载往往将多模态数据的语义嵌入向量（如4KB大小的<a target="_blank" rel="noopener" href="https://openai.com/index/clip/">CLIP embeddings</a>）甚至是原始数据本身作为单独的列进行存储。这导致了“宽列”的形成。​</p>
+<figure>
+<img src="fig3-wide_columns.png" srcset="/img/loading.gif" lazyload alt="" /><figcaption>图3 宽列</figcaption>
+</figure>
+<p>在传统的Parquet格式下，宽列的存在使得Row Group大小的设置面临两难困境：​​ 1. 若​采用较小的Row Group Size以降低单个Row Group的数据量：​一方面，元数据开销必然增加，从而影响性能​；​​另一方面，与宽列关联的窄列数据量会变得极小，可能被放入远小于文件系统最佳读取尺寸的Page中，导致I/O效率低下。​​ ​​ 2. 若​维持较大的Row Group Size以避免上述问题：一方面，Parquet Writer在写入数据时需要消耗大量内存资源进行缓冲；​另一方面，由于当前主流Parquet Reader如pyarrow）以Row Group为并行单元处理数据，读取过程同样会占用大量内存。​</p>
+<h2 id="宽表">宽表</h2>
+<figure>
+<img src="fig4-wide_schemas.png" srcset="/img/loading.gif" lazyload alt="" /><figcaption>图4 宽表</figcaption>
+</figure>
+<p>特征工程作为AI工程的核心环节，会从原始数据中提取大量特征（通常多达数千个）​​。这使得许多AI工作负载拥有​​极其宽泛的数据模式（Schema）​​，即数据表包含大量数据列。尽管Parquet等列式存储格式提供了强大的​​列投影功能以最小化数据读取量​​，但读取时​​仍需完整加载所有列的模式元数据​​。这种元数据加载​​在低延迟场景下会引入显著开销​​，​​无法满足性能要求​​；同时，在跨多个文件缓存此类元数据时，​​极易造成内存占用激增，严重制约系统性能​​。</p>
+<!-- ## 元数据 -->
+<h1 id="lance格式">Lance格式</h1>
+<p>如前所述，Lance格式是支撑LanceDB高效管理和访问多模态数据的关键设计。它​融合了传统数据格式与表格式的特性，承担了这两个层级的任务，对这两个层级分别进行了针对性优化。​​​​本章将深入解析Lance在数据格式层和表格式层的关键优化设计。​</p>
+<!-- https://blog.lancedb.com/lance-v2/ -->
+<!-- https://blog.lancedb.com/file-readers-in-depth-parallelism-without-row-groups/ -->
+<!-- https://blog.lancedb.com/lance-file-2-1-smaller-and-simpler/ -->
+<!-- Lance: Efficient Random Access in Columnar Storage through Adaptive Structural Encodings -->
+<!-- https://blog.lancedb.com/columnar-file-readers-in-depth-apis-and-fusion/ -->
+<h2 id="lance数据格式摒弃row-group">Lance数据格式：摒弃Row Group</h2>
+<p>传统的列式存储格式（如Parquet和ORC）均遵循PAX存储模型，在数据组织上引入了Row Group和Column Chunk的结构分层，同一Row Group内的每个Column Chunk都包含了相同行数的数据记录。而Lance数据格式的一项核心设计则在于摒弃了Row Group结构，从而获得更高的数据布局灵活性。</p>
+<figure>
+<img src="fig5-lance_data_format.png" srcset="/img/loading.gif" lazyload alt="" /><figcaption>图5 Lance文件数据格式</figcaption>
+</figure>
+<p>Lance实际存储数据的是<code>.lance</code>文件。如图5所示，一个<code>.lance</code>文件主要由三部分组成:</p>
+<ul>
+<li><p><strong>Data Pages</strong>：存储实际的列数据。​​每个Page归属于一个特定的列，而每个列可以包含多个数据页。​​​​更进一步地，每个数据页由一系列Buffer构成。​</p></li>
+<li><p><strong>Column Metadata</strong>：当前文件下的每个列均有一个Column Metadata来描述属于该列的元信息，例如每个Page所包含的数据行数及其每个Buffer的offser和size。</p></li>
+<li><p><strong>Footer</strong>：包含描述整个文件的全局元信息，例如文件格式版本、总列数、Column Metadata区域的位置等。</p></li>
+</ul>
+<p>通过摒弃Row Group层级的限制，Lance数据格式实现了极高的数据布局灵活性：单个文件可以仅存储数据表的部分列（而非完整列集）；同一文件内不同列可以包含不同行数的数据记录；同一文件内不同列可以包含数量不同的Page；并且每个Page本身也可以包含不同行数的数据记录。这种设计的核心优势在于完美规避了传统格式中因宽列与窄列并存而引发的Row Group大小权衡难题，开发者仅需为每个列配置合适的Buffer大小即可。</p>
+<p>此外，摒弃Row Group的设计也带来了其它的优化空间，我们将在后续章节中探讨。</p>
+<h2 id="lance数据格式计算并行性与io并行性解耦">Lance数据格式：计算并行性与I/O并行性解耦</h2>
+<p>顺应着摒弃Row Group的设计，Lance进一步将计算和I/O解耦，提高并行能力。</p>
+<p>我们先来看看传统的列式存储读取过程，下面是整个流程抽象出的伪代码：</p>
+<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><code class="hljs C++">parallel <span class="hljs-keyword">for</span> row_group in file:<br>  # 以Row Group为单位并行计算<br>  arrays = []<br>  parallel <span class="hljs-keyword">for</span> column in row_group:<br>    # 以Column Chunk为单位并行I/O<br>    array = <span class="hljs-built_in">ArrayBuilder</span>()<br>    <span class="hljs-keyword">for</span> page in column:<br>      page = <span class="hljs-built_in">read_page</span>()<br>      array.<span class="hljs-built_in">extend</span>()<br>    arrays.<span class="hljs-built_in">append</span>(array)<br>  batch = <span class="hljs-built_in">RecordBatch</span>(arrays)<br>  yield batch<br></code></pre></td></tr></table></figure>
+<p>实际实现可能更复杂（例如Page无法独立解码、预取机制等），但以上伪代码揭示了传统架构的两个关键特征：</p>
+<ol type="1">
+<li><p>数据读取流程中的计算（这里特指解码过程）并行性和I/O并行性是紧密绑定的；</p></li>
+<li><p>数据读取流程的并行度和上层应用所设定的并行程度相关。例如，当上层应用设置了任务并行性度<span class="math inline">\(X\)</span>（通常和CPU核心数相关），此时<span class="math inline">\(X\)</span>就是对Row Group的访问并行度。同时涉及的数据列总共有<span class="math inline">\(Y\)</span>列，那么I/O并行度将为<span class="math inline">\(X \times Y\)</span>。</p></li>
+</ol>
+<p>同时，我们还需要认识到两个事实：</p>
+<ol type="1">
+<li><p>硬盘的I/O并行度存在上限​​。当并发I/O请求数量​​低于​​该上限时，硬件性能​​无法被充分利用​​；而当并发请求数量​​超出​​该上限时，​​请求排队将导致平均I/O延迟上升​​。</p></li>
+<li><p>由于不同列的数据类型各不相同，尺寸不一，存储相同行数的数据所需的Page数量在列与列之间也存在差异。</p></li>
+</ol>
+<p>于是，基于上述特征和事实，我们可以去发现传统列式存储读取数据时存在的问题。在后面的场景中，我们数据读取拆解为两个核心阶段：数据I/O和解码计算两个关键过程，其中解码计算按固定行数分批执行。</p>
+<figure>
+<img src="fig6-traditional_column_storage_read.png" srcset="/img/loading.gif" lazyload alt="" /><figcaption>图6 传统列式存储数据读取顺序示例</figcaption>
+</figure>
+<p>图6给出了一个数据读取时I/O顺序的示例。假设此时以<span class="math inline">\(X\)</span>为3、<span class="math inline">\(Y\)</span>为3的并行度对数据发起访问，由于各列包含的Page数量不同，导致每一轮次发起的I/O请求数量存在差异。如图所示，第一轮I/O因请求数量超过硬盘并行处理能力上限而导致延迟上升；而在第三轮，则因请求数量不足造成硬件性能浪费。​</p>
+<figure>
+<img src="fig7-inefficient_io_decode.png" srcset="/img/loading.gif" lazyload alt="" /><figcaption>图7 数据I/O和解码计算重叠不足导致效率低下</figcaption>
+</figure>
+<p>更为关键的是，解码计算的前提是已完成读取的Page包含了各列固定行数批次的数据。即便是最理想的情况，每列至少需要完成一个Page的I/O读取。这意味着在平均情况下，系统必须等<span class="math inline">\(X \times Y\)</span>（本例中为9）个I/O操作完成才能启动解码。如前所述，由于并发 I/O 请求过多导致的平均延迟大幅提升，会显著推迟解码计算的开始时间，造成 I/O 与计算的重叠不足，最终严重制约数据读取效率。​</p>
+<figure>
+<img src="fig8-efficient_io_decode.png" srcset="/img/loading.gif" lazyload alt="" /><figcaption>图8 理想的数据I/O和解码计算重叠</figcaption>
+</figure>
+<figure>
+<img src="fig9-lance_read.png" srcset="/img/loading.gif" lazyload alt="" /><figcaption>图9 Lance数据读取顺序示例</figcaption>
+</figure>
+<p>​如图8所示，数据读取效率最优化的关键在于实现 I/O 操作与解码计算的最大化重叠。​而要实现这个，只需要按行号顺序访问各列对应的Page（同时控制并发I/O请求数），确保已读取的数据能最大程度地满足即时解码条件，从而实现最优效率。​于是，修改图6的数据读取顺序变为图9所示，以行号作为优先级，顺序读取各列Page即可。</p>
+<figure>
+<img src="fig10-lance_read_schedule.png" srcset="/img/loading.gif" lazyload alt="" /><figcaption>图10 Lance数据读取过程中的数据I/O和解码计算调度</figcaption>
+</figure>
+<p>​​基于上述思路，Lance设计了如图10所示的数据读取调度机制：​​</p>
+<ol type="1">
+<li><p>​调度线程（Scheduling Thread）​：根据查询任务和文件元数据，确定目标Page，生成对应的I/O请求并提交至I/O调度器，同时向解码线程发起解码请求。</p></li>
+<li><p>​​I/O调度器（I/O Scheduler）：​​按行号顺序调度​​所有待读取的Page，并根据​​硬盘性能动态控制并发I/O请求数量​​。</p></li>
+<li><p>​​解码线程（Decoder Thread）​​：​​接收已完成 I/O 的 Page 数据​​，执行解码计算任务。</p></li>
+</ol>
+<p>​​通过这种设计，Lance 实现了访问过程中数据I/O与解码计算的彻底解耦，有效解决了传统列式存储在数据访问过程中的性能瓶颈，显著提升了整体效率。​</p>
+<h2 id="lance数据格式随机io友好的结构编码">Lance数据格式：随机I/O友好的结构编码</h2>
+<h2 id="lance表格式zero-cost-data-evolution">Lance表格式：Zero-cost Data Evolution</h2>
+<!-- https://blog.lancedb.com/designing-a-table-format-for-ml-workloads/ -->
+<h1 id="lance之上的lancedb">Lance之上的LanceDB</h1>
+<!-- https://lancedb.github.io/lancedb/ -->
+
+                
+              </div>
+            
+            <hr/>
+            <div>
+              <div class="post-metas my-3">
+  
+    <div class="post-meta mr-3 d-flex align-items-center">
+      <i class="iconfont icon-category"></i>
+      
+
+<span class="category-chains">
+  
+  
+    
+      <span class="category-chain">
+        
+  <a href="/categories/%E5%88%97%E5%BC%8F%E5%AD%98%E5%82%A8/" class="category-chain-item">列式存储</a>
+  
+  
+    <span>></span>
+    
+  <a href="/categories/%E5%88%97%E5%BC%8F%E5%AD%98%E5%82%A8/%E5%90%91%E9%87%8F%E6%95%B0%E6%8D%AE%E5%BA%93/" class="category-chain-item">向量数据库</a>
+  
+  
+
+  
+
+      </span>
+    
+  
+</span>
+
+    </div>
+  
+  
+    <div class="post-meta">
+      <i class="iconfont icon-tags"></i>
+      
+        <a href="/tags/%E5%88%97%E5%BC%8F%E5%AD%98%E5%82%A8/">#列式存储</a>
+      
+        <a href="/tags/Lance/">#Lance</a>
+      
+        <a href="/tags/LanceDB/">#LanceDB</a>
+      
+        <a href="/tags/AI%E5%AD%98%E5%82%A8/">#AI存储</a>
+      
+    </div>
+  
+</div>
+
+
+              
+  
+
+  <div class="license-box my-3">
+    <div class="license-title">
+      <div>AI时代的多模态列式存储——LanceDB技术概览</div>
+      <div>http://ztorchan.com/2025/07/21/lance-overview/</div>
+    </div>
+    <div class="license-meta">
+      
+        <div class="license-meta-item">
+          <div>作者</div>
+          <div>ztorchan</div>
+        </div>
+      
+      
+        <div class="license-meta-item license-meta-date">
+          <div>发布于</div>
+          <div>2025年7月21日</div>
+        </div>
+      
+      
+      
+        <div class="license-meta-item">
+          <div>许可协议</div>
+          <div>
+            
+              
+              
+                <a target="_blank" href="https://creativecommons.org/licenses/by/4.0/">
+                  <span class="hint--top hint--rounded" aria-label="BY - 署名">
+                    <i class="iconfont icon-by"></i>
+                  </span>
+                </a>
+              
+            
+          </div>
+        </div>
+      
+    </div>
+    <div class="license-icon iconfont"></div>
+  </div>
+
+
+
+              
+                <div class="post-prevnext my-3">
+                  <article class="post-prev col-6">
+                    
+                    
+                  </article>
+                  <article class="post-next col-6">
+                    
+                    
+                      <a href="/2025/07/07/columnar-storage-overview/" title="从Parquet到Arrow——列式存储概览">
+                        <span class="hidden-mobile">从Parquet到Arrow——列式存储概览</span>
+                        <span class="visible-mobile">下一篇</span>
+                        <i class="iconfont icon-arrowright"></i>
+                      </a>
+                    
+                  </article>
+                </div>
+              
+            </div>
+
+            
+  
+  
+    <article id="comments" lazyload>
+      
+  <div id="valine"></div>
+  <script type="text/javascript">
+    Fluid.utils.loadComments('#valine', function() {
+      Fluid.utils.createScript('https://lib.baomitu.com/valine/1.5.1/Valine.min.js', function() {
+        var options = Object.assign(
+          {"appId":"YuytDEpyTHy9DT537lZ3pK2h-gzGzoHsz","appKey":"ikKqcBQQMPUMOx6c8fWpyT3q","path":"window.location.pathname","placeholder":"给我留言吧","avatar":"hide","meta":["nick","mail"],"requiredFields":[],"pageSize":10,"lang":"zh-CN","highlight":true,"recordIP":false,"serverURLs":"","emojiCDN":"https://cdn.jsdelivr.net/gh/walinejs/emojis/tieba/","emojiMaps":{"同意":"tieba_agree.png","生气":"tieba_angry.png","不高兴":"tieba_annoyed.png","滑稽":"tieba_antic.png","黑线":"tieba_awkward.png","偷笑":"tieba_chuckle.png","张口闭眼":"tieba_crazy.png","大哭":"tieba_cry.png","可怜楚楚":"tieba_cute.png","酸爽":"tieba_dizzy_face.png","疑问":"tieba_doubt.png","委屈":"tieba_grievance.png","爱心眼":"tieba_heart_eyes.png","大汗":"tieba_huge_sweat.png","脸肿":"tieba_hurt.png","笑哭":"tieba_joy.png","哈哈":"tieba_laugh.png","鄙视":"tieba_look_down.png","可爱":"tieba_lovely.png","挖鼻":"tieba_pick_nose.png","大怒":"tieba_rage.png","疲倦":"tieba_rolling_eyes.png","满足":"tieba_satisfied.png","害羞":"tieba_shy.png","睡觉":"tieba_sleep.png","你懂的":"tieba_smirk.png","吓哭":"tieba_sob.png","不好意思":"tieba_sorry.png","酷":"tieba_sunglasses.png","啊":"tieba_surprised.png","汗":"tieba_sweat.png","吐":"tieba_vomit.png","喷水":"tieba_vomit_water.png","眨眼":"tieba_wink.png","哇":"tieba_wow.png","美味":"tieba_yum.png","香蕉":"tieba_banana.png","蛋糕":"tieba_cake.png","礼物":"tieba_gift.png","蜡烛":"tieba_candle.png","咖啡":"tieba_coffee.png","药丸":"tieba_pill.png","红领巾":"tieba_red_scarf.png","玫瑰":"tieba_rose.png","沙发":"tieba_sofa.png","便便":"tieba_shit.png","厕纸":"tieba_toilet_paper.png","彩虹":"tieba_rainbow.png","月亮":"tieba_moon.png","爱心":"tieba_heart.png","OK":"tieba_ok.png","耶":"tieba_v.png","大拇指":"tieba_thumbsup.png","切克闹":"tieba_metal.png"},"enableQQ":false},
+          {
+            el: "#valine",
+            path: window.location.pathname
+          }
+        )
+        new Valine(options);
+        Fluid.utils.waitElementVisible('#valine .vcontent', () => {
+          var imgSelector = '#valine .vcontent img:not(.vemoji)';
+          Fluid.plugins.imageCaption(imgSelector);
+          Fluid.plugins.fancyBox(imgSelector);
+        })
+      });
+    });
+  </script>
+  <noscript>Please enable JavaScript to view the comments</noscript>
+
+
+    </article>
+  
+
+
+          </article>
+        </div>
+      </div>
+    </div>
+
+    <div class="side-col d-none d-lg-block col-lg-2">
+      
+  <aside class="sidebar" style="margin-left: -1rem">
+    <div id="toc">
+  <p class="toc-header">
+    <i class="iconfont icon-list"></i>
+    <span>目录</span>
+  </p>
+  <div class="toc-body" id="toc-body"></div>
+</div>
+
+
+
+  </aside>
+
+
+    </div>
+  </div>
+</div>
+
+
+
+
+
+  
+
+
+
+  
+
+
+
+  
+
+
+
+  
+
+
+
+  
+
+
+
+
+
+
+
+    
+
+    
+      <a id="scroll-top-button" aria-label="TOP" href="#" role="button">
+        <i class="iconfont icon-arrowup" aria-hidden="true"></i>
+      </a>
+    
+
+    
+      <div class="modal fade" id="modalSearch" tabindex="-1" role="dialog" aria-labelledby="ModalLabel"
+     aria-hidden="true">
+  <div class="modal-dialog modal-dialog-scrollable modal-lg" role="document">
+    <div class="modal-content">
+      <div class="modal-header text-center">
+        <h4 class="modal-title w-100 font-weight-bold">搜索</h4>
+        <button type="button" id="local-search-close" class="close" data-dismiss="modal" aria-label="Close">
+          <span aria-hidden="true">&times;</span>
+        </button>
+      </div>
+      <div class="modal-body mx-3">
+        <div class="md-form mb-5">
+          <input type="text" id="local-search-input" class="form-control validate">
+          <label data-error="x" data-success="v" for="local-search-input">关键词</label>
+        </div>
+        <div class="list-group" id="local-search-result"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+    
+
+    
+  </main>
+
+  <footer>
+    <div class="footer-inner">
+  
+  
+  
+  
+</div>
+
+  </footer>
+
+  <!-- Scripts -->
+  
+  <script  src="https://lib.baomitu.com/nprogress/0.2.0/nprogress.min.js" ></script>
+  <link  rel="stylesheet" href="https://lib.baomitu.com/nprogress/0.2.0/nprogress.min.css" />
+
+  <script>
+    NProgress.configure({"showSpinner":false,"trickleSpeed":100})
+    NProgress.start()
+    window.addEventListener('load', function() {
+      NProgress.done();
+    })
+  </script>
+
+
+<script  src="https://lib.baomitu.com/jquery/3.6.0/jquery.min.js" ></script>
+<script  src="https://lib.baomitu.com/twitter-bootstrap/4.6.1/js/bootstrap.min.js" ></script>
+<script  src="/js/events.js" ></script>
+<script  src="/js/plugins.js" ></script>
+
+
+  <script  src="https://lib.baomitu.com/typed.js/2.0.12/typed.min.js" ></script>
+  <script>
+    (function (window, document) {
+      var typing = Fluid.plugins.typing;
+      var subtitle = document.getElementById('subtitle');
+      if (!subtitle || !typing) {
+        return;
+      }
+      var text = subtitle.getAttribute('data-typed-text');
+      
+        typing(text);
+      
+    })(window, document);
+  </script>
+
+
+
+
+  
+    <script  src="/js/img-lazyload.js" ></script>
+  
+
+
+
+
+  
+<script>
+  Fluid.utils.createScript('https://lib.baomitu.com/tocbot/4.18.2/tocbot.min.js', function() {
+    var toc = jQuery('#toc');
+    if (toc.length === 0 || !window.tocbot) { return; }
+    var boardCtn = jQuery('#board-ctn');
+    var boardTop = boardCtn.offset().top;
+
+    window.tocbot.init(Object.assign({
+      tocSelector     : '#toc-body',
+      contentSelector : '.markdown-body',
+      linkClass       : 'tocbot-link',
+      activeLinkClass : 'tocbot-active-link',
+      listClass       : 'tocbot-list',
+      isCollapsedClass: 'tocbot-is-collapsed',
+      collapsibleClass: 'tocbot-is-collapsible',
+      scrollSmooth    : true,
+      includeTitleTags: true,
+      headingsOffset  : -boardTop,
+    }, CONFIG.toc));
+    if (toc.find('.toc-list-item').length > 0) {
+      toc.css('visibility', 'visible');
+    }
+
+    Fluid.events.registerRefreshCallback(function() {
+      if ('tocbot' in window) {
+        tocbot.refresh();
+        var toc = jQuery('#toc');
+        if (toc.length === 0 || !tocbot) {
+          return;
+        }
+        if (toc.find('.toc-list-item').length > 0) {
+          toc.css('visibility', 'visible');
+        }
+      }
+    });
+  });
+</script>
+
+
+  <script src=https://lib.baomitu.com/clipboard.js/2.0.11/clipboard.min.js></script>
+
+  <script>Fluid.plugins.codeWidget();</script>
+
+
+  
+<script>
+  Fluid.utils.createScript('https://lib.baomitu.com/anchor-js/4.3.1/anchor.min.js', function() {
+    window.anchors.options = {
+      placement: CONFIG.anchorjs.placement,
+      visible  : CONFIG.anchorjs.visible
+    };
+    if (CONFIG.anchorjs.icon) {
+      window.anchors.options.icon = CONFIG.anchorjs.icon;
+    }
+    var el = (CONFIG.anchorjs.element || 'h1,h2,h3,h4,h5,h6').split(',');
+    var res = [];
+    for (var item of el) {
+      res.push('.markdown-body > ' + item.trim());
+    }
+    if (CONFIG.anchorjs.placement === 'left') {
+      window.anchors.options.class = 'anchorjs-link-left';
+    }
+    window.anchors.add(res.join(', '));
+
+    Fluid.events.registerRefreshCallback(function() {
+      if ('anchors' in window) {
+        anchors.removeAll();
+        var el = (CONFIG.anchorjs.element || 'h1,h2,h3,h4,h5,h6').split(',');
+        var res = [];
+        for (var item of el) {
+          res.push('.markdown-body > ' + item.trim());
+        }
+        if (CONFIG.anchorjs.placement === 'left') {
+          anchors.options.class = 'anchorjs-link-left';
+        }
+        anchors.add(res.join(', '));
+      }
+    });
+  });
+</script>
+
+
+  
+<script>
+  Fluid.utils.createScript('https://lib.baomitu.com/fancybox/3.5.7/jquery.fancybox.min.js', function() {
+    Fluid.plugins.fancyBox();
+  });
+</script>
+
+
+  <script>Fluid.plugins.imageCaption();</script>
+
+  <script  src="/js/local-search.js" ></script>
+
+  <script defer src="https://busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js" ></script>
+
+
+
+
+
+<!-- 主题的启动项，将它保持在最底部 -->
+<!-- the boot of the theme, keep it at the bottom -->
+<script  src="/js/boot.js" ></script>
+
+
+  
+
+  <noscript>
+    <div class="noscript-warning">博客在允许 JavaScript 运行的环境下浏览效果更佳</div>
+  </noscript>
+</body>
+</html>
