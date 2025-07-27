@@ -33,12 +33,20 @@
 <meta property="og:image" content="http://ztorchan.com/2025/07/21/lance-overview/fig8-efficient_io_decode.png">
 <meta property="og:image" content="http://ztorchan.com/2025/07/21/lance-overview/fig9-lance_read.png">
 <meta property="og:image" content="http://ztorchan.com/2025/07/21/lance-overview/fig10-lance_read_schedule.png">
-<meta property="og:image" content="http://ztorchan.com/2025/07/21/lance-overview/fig11-table_growth.png">
-<meta property="og:image" content="http://ztorchan.com/2025/07/21/lance-overview/fig12-horizontal_growth_with_default_value.png">
-<meta property="og:image" content="http://ztorchan.com/2025/07/21/lance-overview/fig13-zero_cost_data_evolution.png">
-<meta property="og:image" content="http://ztorchan.com/2025/07/21/lance-overview/fig14-zero_cost_data_deletion.png">
+<meta property="og:image" content="http://ztorchan.com/2025/07/21/lance-overview/fig11-parquet_structral_encode.jpg">
+<meta property="og:image" content="http://ztorchan.com/2025/07/21/lance-overview/fig12-arrow_structral_encode.jpg">
+<meta property="og:image" content="http://ztorchan.com/2025/07/21/lance-overview/fig13-full_zip.jpg">
+<meta property="og:image" content="http://ztorchan.com/2025/07/21/lance-overview/fig14-mini_block.jpg">
+<meta property="og:image" content="http://ztorchan.com/2025/07/21/lance-overview/fig15-struct_packing.jpg">
+<meta property="og:image" content="http://ztorchan.com/2025/07/21/lance-overview/fig16-table_growth.png">
+<meta property="og:image" content="http://ztorchan.com/2025/07/21/lance-overview/fig17-horizontal_growth_with_default_value.png">
+<meta property="og:image" content="http://ztorchan.com/2025/07/21/lance-overview/fig18-zero_cost_data_evolution.png">
+<meta property="og:image" content="http://ztorchan.com/2025/07/21/lance-overview/fig19-zero_cost_data_deletion.png">
+<meta property="og:image" content="http://ztorchan.com/2025/07/21/lance-overview/fig20-lancedb.png">
+<meta property="og:image" content="http://ztorchan.com/2025/07/21/lance-overview/fig21-lancedb_storage_tradeoffs.png">
+<meta property="og:image" content="http://ztorchan.com/2025/07/21/lance-overview/fig22-lancedb_vector_search.png">
 <meta property="article:published_time" content="2025-07-20T16:52:47.000Z">
-<meta property="article:modified_time" content="2025-07-21T16:37:53.562Z">
+<meta property="article:modified_time" content="2025-07-27T16:39:09.760Z">
 <meta property="article:author" content="ztorchan">
 <meta property="article:tag" content="列式存储">
 <meta property="article:tag" content="Lance">
@@ -331,7 +339,7 @@
       <span class="post-meta mr-2">
         <i class="iconfont icon-chart"></i>
         
-          5.9k 字
+          9k 字
         
       </span>
     
@@ -414,7 +422,11 @@
 <figure>
 <img src="fig3-wide_columns.png" srcset="/img/loading.gif" lazyload alt="" /><figcaption>图3 宽列</figcaption>
 </figure>
-<p>在传统的Parquet格式下，宽列的存在使得Row Group大小的设置面临两难困境：​​ 1. 若​采用较小的Row Group Size以降低单个Row Group的数据量：​一方面，元数据开销必然增加，从而影响性能​；​​另一方面，与宽列关联的窄列数据量会变得极小，可能被放入远小于文件系统最佳读取尺寸的Page中，导致I/O效率低下。​​ ​​ 2. 若​维持较大的Row Group Size以避免上述问题：一方面，Parquet Writer在写入数据时需要消耗大量内存资源进行缓冲；​另一方面，由于当前主流Parquet Reader如pyarrow）以Row Group为并行单元处理数据，读取过程同样会占用大量内存。​</p>
+<p>在传统的Parquet格式下，宽列的存在使得Row Group大小的设置面临两难困境：​​</p>
+<ol type="1">
+<li>若​采用较小的Row Group Size以降低单个Row Group的数据量：​一方面，元数据开销必然增加，从而影响性能​；​​另一方面，与宽列关联的窄列数据量会变得极小，可能被放入远小于文件系统最佳读取尺寸的Page中，导致I/O效率低下。​​ ​​</li>
+<li>若​维持较大的Row Group Size以避免上述问题：一方面，Parquet Writer在写入数据时需要消耗大量内存资源进行缓冲；​另一方面，由于当前主流Parquet Reader如pyarrow）以Row Group为并行单元处理数据，读取过程同样会占用大量内存。​</li>
+</ol>
 <h2 id="宽表">宽表</h2>
 <figure>
 <img src="fig4-wide_schemas.png" srcset="/img/loading.gif" lazyload alt="" /><figcaption>图4 宽表</figcaption>
@@ -481,27 +493,67 @@
 <li><p>​​解码线程（Decoder Thread）​​：​​接收已完成 I/O 的 Page 数据​​，执行解码计算任务。</p></li>
 </ol>
 <p>​​通过这种设计，Lance 实现了访问过程中数据I/O与解码计算的彻底解耦，有效解决了传统列式存储在数据访问过程中的性能瓶颈，显著提升了整体效率。​</p>
-<h2 id="lance数据格式随机io友好的结构编码">Lance数据格式：随机I/O友好的结构编码</h2>
+<h2 id="lance数据格式随机访问友好的结构编码">Lance数据格式：随机访问友好的结构编码</h2>
+<p>前面提到，LanceDB的定位决定了其必然面临海量的点查询需求。这些点查询将会触发大量的随机I/O，对性能相当不友好。这个问题在面临复杂结构时将变得更为严重，例如<code>List&lt;string&gt;</code>类型列，<code>List</code>和<code>string</code>均为变长数据类型，嵌套使得该列的数据分布变得更为复杂，且还可能存在空值情况，这就为点查询引入了严重的寻址开销。</p>
+<p>​​点查询的执行效率与数据格式的结构编码设计密切相关。结构编码决定了数据从逻辑表示到物理存储的映射规则。为深入理解这一关键机制，我们首先分析Parquet和Arrow的结构编码方案，对比二者在点查询场景下的数据访问差异（这部分内容在<a href="https://ztorchan.com/2025/07/07/columnar-storage-overview/">前一篇文章</a>中也曾提及）。​</p>
+<figure>
+<img src="fig11-parquet_structral_encode.jpg" srcset="/img/loading.gif" lazyload alt="" /><figcaption>图11 Parquet结构编码</figcaption>
+</figure>
+<p>Parquet为嵌套结构体的每个叶子节点列独立维护一个Column Chunk，每个Column Chunk则进一步划分为多个Page。Page是数据压缩的基本单元，其内部包含：用于编码数据重复性与存在性的Repetition/Definition Level、描述数据项基本属性（如长度）的元信息，以及数据本身。每当对特定行发起访问时，Parquet通过Page Offset Index可快速定位目标行所在的Page，进而加载、解压该Page并读取其内部数据完成访问。​</p>
+<p>Parquet的结构编码十分契合于点查询，但也存在几个问题：</p>
+<ul>
+<li><p>点查询会引入与Page大小等同的读放大。虽然Parquet并不实际为空值分配空间，且会将Page进行压缩存储，但Page的完整加载还是不可避免地引入了冗余数据读取。</p></li>
+<li><p>面对较大尺寸的数据类型时，单个Page可容纳的数据行数减少，所需Page数量增加，随之直接提升Page Offset Index的内存开销。​</p></li>
+<li><p>Page的压缩和解压缩也会引入CPU计算开销。</p></li>
+</ul>
+<figure>
+<img src="fig12-arrow_structral_encode.jpg" srcset="/img/loading.gif" lazyload alt="" /><figcaption>图12 Arrow结构编码</figcaption>
+</figure>
+<p>尽管Arrow的定位在于内存列式存储，但我们仍可以探究其结构编码应用于硬盘会发生什么。Arrow没有对数据进行细粒度的划分，并为空值分配物理空间，其通过直接的有效性位图和偏移量数组标识数据存在性与重复性（而非Parquet的Repetition/Definition Level）。以<code>List&lt;string&gt;</code>类型数据列为例（其布局如图12所示），读取单行数据至少触发5次独立的离散I/O操作，且这样的I/O次数会随着嵌套结构深度呈线性增长。​</p>
+<p>该结构编码的优势在于消除了读放大问题，但代价是显著增加了I/O操作频次。在内存场景下，此类高频I/O不会成为主要瓶颈；然而当其应用于硬盘或云存储时，高频 I/O 将迅速耗尽底层存储的IOPS能力，形成严重的性能瓶颈。</p>
+<p>为了结合上述两种编码结构的优势以更好地应对点查询，Lance为大尺寸数据类型和小尺寸数据类型分别设计了<strong>Full Zip编码</strong>和<strong>Mini-block编码</strong>，确保<strong>面对任意数据类型的查询都能在1次（定长数据类型）至2（变长数据类型）次I/O中完成数据读取</strong>。</p>
+<figure>
+<img src="fig13-full_zip.jpg" srcset="/img/loading.gif" lazyload alt="" /><figcaption>图13 Full Zip编码</figcaption>
+</figure>
+<p>Full Zip编码专为大尺寸数据类型优化设计。为规避读放大问题，该编码摒弃了将多个数据项打包成Page的方式，而是按数据项粒度布局存储​。如图13所示，对于叶子列中的每个数据项，Full Zip编码将其 Repetition/Definition Level、数据项属性（如长度）及数据本身​连续存储于连续地址上​，我们可以将这样一组数据称为一个 Buffer。</p>
+<p>由于任意数据列的类型和结构固定后，其Repetition/Definition Level的取值范围即被确定，因此Full Zip编码会将Buffer的Repetition/Definition Level通过bit pack编码压缩到1~4字节的固定长度。以<code>Struct&lt;List&lt;string&gt;&gt;</code>类型列为例，可以用低位3 bit表示Definition Level和高位1 bit表示Repetition level，共4 bit。图13展示了一个<code>['AB', 'C'], Null List, Null Struct, [Null], []</code>数据列基于Zip Full编码的实际存储布局。</p>
+<p>上述数据布局设计对于定长数据类型而言已经可以实现在1次I/O内完成目标数据查询，因为此时Buffer是定长的，目标数据的地址偏移量可以直接计算得出。然而，该方案无法直接支持变长数据类型。为此，Full Zip编码还引入了一个Repetition Index数组存储所有数据项的地址偏移量，使得变长数据类型的点查询也仅需2次I/O便可完成。此外，扫描查询也可以通过计算（定长）或查询Repetition Index数组（变长）来获取目标范围来实现。</p>
+<figure>
+<img src="fig14-mini_block.jpg" srcset="/img/loading.gif" lazyload alt="" /><figcaption>图14 Full Zip编码</figcaption>
+</figure>
+<p>Mini-block编码则专为小尺寸数据类型优化设计。对于小尺寸数据类型而言，适当的读放大是可以接受的，因此Mini-block 依旧采用分组存储策略，将数据划分为多个分组，我们称之为​​Chunk​​。每个Chunk同样包含了：Repetition/Definition Level、数据项属性（如长度）及数据本身。此外，Chunk头部还额外存储了该Chunk的数据项数量和总大小等统计信息。值得注意的是，这种结构设计与Parquet的Page结构高度相似，但Mini-block通常将Chuck大小控制在了4<sub>8KB内（1</sub>2个扇区大小），也将数据项个数控制在4096个以内，以避免过度读放大。</p>
+<p>同样的，Mini-block也为维护了Repetition Index数组以快速确定目标数据在哪个Chunk内，以确保当嵌套结构内存在变长数据类型时依然能在2次I/O内完成对目标数据的读取。每个Chunk的Repetition Index包含N+1个非负整数，其中N是所需的最大随机访问嵌套级别。每个Chunk的Repetition Index由N+1个非负整数构成（N代表所需最大随机访问嵌套深度），例如对于<code>array[x][y]</code>访问模式需要维护3个整数：第一个整数记录该Chunk起始前已完成的顶层结构（数据行）数量；第二个整数记录该 Chunk起始前在当前顶层结构内已完成的二级结构数量；第三个整数记录该Chunk起始前在当前二级结构内已完成的三级结构数量。这听着有些抽象，图14给出了一个<code>List&lt;List&lt;string&gt;&gt;</code>列的例子。</p>
+<figure>
+<img src="fig15-struct_packing.jpg" srcset="/img/loading.gif" lazyload alt="" /><figcaption>图15 Struct Packing编码</figcaption>
+</figure>
+<p>最后，Lance还给出了一种Struct Packing编码，它允许将部分列合并存储，从而转化为行存储模型。对于那些经常被一起访问的数据列，通过Struct Packing编码合并存储，可以有效降低访问过程中的I/O数据。</p>
 <h2 id="lance表格式zero-cost-data-evolution">Lance表格式：Zero-cost Data Evolution</h2>
 <p>在表格式层面，Lance依然借助摒弃Row Group所带来的数据布局灵活性，实现了Zero-cost Data Evolution。</p>
 <figure>
-<img src="fig11-table_growth.png" srcset="/img/loading.gif" lazyload alt="" /><figcaption>图11 数据表的演化</figcaption>
+<img src="fig16-table_growth.png" srcset="/img/loading.gif" lazyload alt="" /><figcaption>图16 数据表的演化</figcaption>
 </figure>
 <p>在深入探讨该设计点之前，我们先来解释一下什么是数据表的演化。数据表在完成构建后并非是一成不变的，其结构会随着上层应用的运行而动态变化，发生表的垂直增长和水平增长：垂直增长就是数据行的增加，例如在发生订单交易后，我们需要往交易表里添加一行交易记录；水平增长则是数据列的增加，这在特征工程等场景中更为常见，例如为一张文本分析表新增“情绪倾向”的数据列。</p>
 <figure>
-<img src="fig12-horizontal_growth_with_default_value.png" srcset="/img/loading.gif" lazyload alt="" /><figcaption>图12 数据表水平增长后旧列以默认值填充</figcaption>
+<img src="fig17-horizontal_growth_with_default_value.png" srcset="/img/loading.gif" lazyload alt="" /><figcaption>图17 数据表水平增长后旧列以默认值填充</figcaption>
 </figure>
 <p>问题发生在表的水平增长上。事实上，表结构的水平扩展并非新兴需求——长期运行的系统必然面临新增业务需求，例如电商平台推出下单返现活动时，需在交易表中新增“返现金额”列。由于历史交易记录无需该列数据，为其设置零值默认值是合理方案。在此场景下，理想方案应避免重写数据文件，仅需维护元数据并在查询旧数据时填充默认值。这正是Iceberg等传统表格式采用的标准方案。​</p>
 <p>然而，AI工作负载对数据演化的要求远不止于此。其新增数据列的操作更为频繁，且通常旨在为所有历史数据添加特征描述（如特征向量）。在传统表格式下，由于Row Group必须包含完整列集，这迫使系统必须复制并重写所有数据文件。这一机制导致数据表演化开销巨大，在宽列存在的场景下更会进一步放大性能影响。​</p>
 <figure>
-<img src="fig13-zero_cost_data_evolution.png" srcset="/img/loading.gif" lazyload alt="" /><figcaption>图13 Zero-cost Data Evolution</figcaption>
+<img src="fig18-zero_cost_data_evolution.png" srcset="/img/loading.gif" lazyload alt="" /><figcaption>图18 Zero-cost Data Evolution</figcaption>
 </figure>
 <p>Lance则没有这个包袱了。摒弃Row Group的设计使其摆脱了单个文件必须包含所有数据列的束缚，从而可以采用创新的二维存储布局：将数据按行划分为多个Fragment，每个Fragment内的数据再按列组织为多个独立文件——每个文件包含固定行数的单列或多列数据。当新增数据列时，Lance无需复制或重写任何现有文件，只需单独创建对应的新文件，并可在必要时灵活合并或拆分这些数据文件。（从逻辑结构上看，Fragment和Row Group非常相似）</p>
-<p>​<img src="fig14-zero_cost_data_deletion.png" srcset="/img/loading.gif" lazyload alt="图14 轻量化的数据删除" /></p>
+<p>​<img src="fig19-zero_cost_data_deletion.png" srcset="/img/loading.gif" lazyload alt="图19 轻量化的数据删除" /></p>
 <p>更进一步地，Lance为数据行删除也进行了轻量化设计。它在每个Fragment内专门维护一个Deletion文件​​，用于标记每行数据的删除状态。通过这种设计，Lance在删除数据行时仅需更新元数据（Deletion文件），而无需修改实际的数据文件本身。​</p>
 <!-- https://blog.lancedb.com/designing-a-table-format-for-ml-workloads/ -->
 <h1 id="lance之上的lancedb">Lance之上的LanceDB</h1>
 <!-- https://lancedb.github.io/lancedb/ -->
+<p>再简单介绍一下LanceDB。</p>
+<p>​<img src="fig20-lancedb.png" srcset="/img/loading.gif" lazyload alt="图20 LanceDB生态" /></p>
+<p>LanceDB是基于Lance格式构建的开源向量数据库，其核心代码主要由Rust编写实现。Lance格式的设计在很大程度上解决了多模态数据存储、点查询随机访问和频繁表演化的效率问题，这使得LanceDB非常契合于当下AI工作负载的数据管理需求。同时，LanceDB为主流数据框架和SQL引擎提供广泛接入支持，便于集成现有数据生态系统。这些优势正推动LanceDB成为当下构建多模态数据湖的答案之一。​</p>
+<p>​<img src="fig21-lancedb_storage_tradeoffs.png" srcset="/img/loading.gif" lazyload alt="图21 LanceDB存储底座选择" /></p>
+<p>同时，LanceDB也为各种形式的存储底座提供了支持，从高成本低延迟的本地SSD到低成本高延迟的S3云存储。广泛的存储底座选择足以满足各类场景的需要，给了用户充分考量权衡的空间。</p>
+<p>​<img src="fig22-lancedb_vector_search.png" srcset="/img/loading.gif" lazyload alt="图22 向量搜索" /></p>
+<p>LanceDB也提供了包括向量搜索（KNN/ANN搜索）和FTS搜索在内的多种数据搜索能力，其中向量搜索作为AI时代核心的数据访问范式，也是是其关键优势所在。​</p>
 
                 
               </div>
