@@ -107,10 +107,12 @@ Apache Parquet和Apache ORC的存储格式本质上都基于PAX模型构建，�
 
 </div>
 
-从图5中，我们可以看出二者的设计在大体上是相似的。Footer中包含了文件级别（例如表结构等）和Row Group级别（例如偏移和Zone Map统计等）的元数据，它作为文件访问的起点，为下一步的数据检索提供了指引。多个Row Group组成了文件的主体数据区，每个Row Group内部遵循PAX模型的设计原理，通过Column Chunk对列数据进行物理组织。对于Parquet而言，Column Chunk还会进一步划分为多个Page。
+从图5中，我们可以看出二者的设计在大体上是相似的。Footer中包含了文件级别（例如表结构等）和Row Group级别（例如偏移和Zone Map统计等）的元数据，它作为文件访问的起点，为下一步的数据检索提供了指引。多个Row Group组成了文件的主体数据区，每个Row Group内部遵循PAX模型的设计原理，通过Column Chunk对列数据进行物理组织。对于Parquet而言，Column Chunk还会进一步划分为多个Page，作为压缩单元（后续章节提及）。
 
 尽管在存储格式上如此相似，二者在对如何划分Row Group采取了不同的选择：
+
 - Parquet基于行数来确定Row Group的大小，以此确保单个Row Group有足够多行数据来支持高效的向量查询，但在内存开销上却不可控（因为Column Chunk是I/O单元，更大的Row Group也意味着更大的Column Chunk）
+
 - ORC使用了固定物理存储大小的Row Group以控制内存开销，但当遇到宽表场景（单行含数万列）时，单个Row Group内的有效行数大幅减少，反而降低了批处理效率。
 
 ## 过滤器
