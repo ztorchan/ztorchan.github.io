@@ -37,7 +37,7 @@
 <meta property="og:image" content="http://ztorchan.com/2025/07/21/lance-overview/fig12-arrow_structral_encode.jpg">
 <meta property="og:image" content="http://ztorchan.com/2025/07/21/lance-overview/fig13-full_zip.jpg">
 <meta property="og:image" content="http://ztorchan.com/2025/07/21/lance-overview/fig14-mini_block.jpg">
-<meta property="og:image" content="http://ztorchan.com/2025/07/21/lance-overview/fig15-struct_packing.jpg">
+<meta property="og:image" content="http://ztorchan.com/2025/07/21/lance-overview/fig15-struct_packing.png">
 <meta property="og:image" content="http://ztorchan.com/2025/07/21/lance-overview/fig16-table_growth.png">
 <meta property="og:image" content="http://ztorchan.com/2025/07/21/lance-overview/fig17-horizontal_growth_with_default_value.png">
 <meta property="og:image" content="http://ztorchan.com/2025/07/21/lance-overview/fig18-zero_cost_data_evolution.png">
@@ -46,7 +46,7 @@
 <meta property="og:image" content="http://ztorchan.com/2025/07/21/lance-overview/fig21-lancedb_storage_tradeoffs.png">
 <meta property="og:image" content="http://ztorchan.com/2025/07/21/lance-overview/fig22-lancedb_vector_search.png">
 <meta property="article:published_time" content="2025-07-20T16:52:47.000Z">
-<meta property="article:modified_time" content="2025-07-27T16:39:09.760Z">
+<meta property="article:modified_time" content="2025-07-27T16:43:05.797Z">
 <meta property="article:author" content="ztorchan">
 <meta property="article:tag" content="列式存储">
 <meta property="article:tag" content="Lance">
@@ -524,7 +524,7 @@
 <p>Mini-block编码则专为小尺寸数据类型优化设计。对于小尺寸数据类型而言，适当的读放大是可以接受的，因此Mini-block 依旧采用分组存储策略，将数据划分为多个分组，我们称之为​​Chunk​​。每个Chunk同样包含了：Repetition/Definition Level、数据项属性（如长度）及数据本身。此外，Chunk头部还额外存储了该Chunk的数据项数量和总大小等统计信息。值得注意的是，这种结构设计与Parquet的Page结构高度相似，但Mini-block通常将Chuck大小控制在了4<sub>8KB内（1</sub>2个扇区大小），也将数据项个数控制在4096个以内，以避免过度读放大。</p>
 <p>同样的，Mini-block也为维护了Repetition Index数组以快速确定目标数据在哪个Chunk内，以确保当嵌套结构内存在变长数据类型时依然能在2次I/O内完成对目标数据的读取。每个Chunk的Repetition Index包含N+1个非负整数，其中N是所需的最大随机访问嵌套级别。每个Chunk的Repetition Index由N+1个非负整数构成（N代表所需最大随机访问嵌套深度），例如对于<code>array[x][y]</code>访问模式需要维护3个整数：第一个整数记录该Chunk起始前已完成的顶层结构（数据行）数量；第二个整数记录该 Chunk起始前在当前顶层结构内已完成的二级结构数量；第三个整数记录该Chunk起始前在当前二级结构内已完成的三级结构数量。这听着有些抽象，图14给出了一个<code>List&lt;List&lt;string&gt;&gt;</code>列的例子。</p>
 <figure>
-<img src="fig15-struct_packing.jpg" srcset="/img/loading.gif" lazyload alt="" /><figcaption>图15 Struct Packing编码</figcaption>
+<img src="fig15-struct_packing.png" srcset="/img/loading.gif" lazyload alt="" /><figcaption>图15 Struct Packing编码</figcaption>
 </figure>
 <p>最后，Lance还给出了一种Struct Packing编码，它允许将部分列合并存储，从而转化为行存储模型。对于那些经常被一起访问的数据列，通过Struct Packing编码合并存储，可以有效降低访问过程中的I/O数据。</p>
 <h2 id="lance表格式zero-cost-data-evolution">Lance表格式：Zero-cost Data Evolution</h2>
