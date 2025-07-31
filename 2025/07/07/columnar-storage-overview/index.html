@@ -32,7 +32,7 @@
 <meta property="og:image" content="http://ztorchan.com/2025/07/07/columnar-storage-overview/fig7-before_arrow.png">
 <meta property="og:image" content="http://ztorchan.com/2025/07/07/columnar-storage-overview/fig8-after_arrow.png">
 <meta property="article:published_time" content="2025-07-06T16:49:02.000Z">
-<meta property="article:modified_time" content="2025-07-26T07:28:04.605Z">
+<meta property="article:modified_time" content="2025-07-31T15:09:07.079Z">
 <meta property="article:author" content="ztorchan">
 <meta property="article:tag" content="列式存储">
 <meta property="article:tag" content="Parquet">
@@ -517,7 +517,7 @@
 <li><p><strong>多语言生态支持​</strong>：Arrow提供多语言原生API（Python、Java、C++等），并与Pandas、Spark等生态深度集成。</p></li>
 <li><p><strong>零拷贝数据交互</strong>：在多语言支持的基础上，Arrow实现了真正的​​语言无关内存标准化​​——在任何编程环境下，其内存数据布局保持完全一致的结构设计。这种统一的物理表示使多语言系统能​​直接共享内存数据​​（如Java程序无缝访问C++构建的Arrow对象），彻底免除序列化/反序列化操作。这在真正意义上实现了零拷贝的数据交互，不仅减少CPU开销，还大幅降低跨语言/跨框架交互的延迟，提升分布式计算效率。</p></li>
 <li><p><strong>硬件高效</strong>：Arrow采用列式内存布局，将同一列数据连续存储，显著提升数据分析效率。列式布局结合现代硬件特性（如CPU缓存、向量化指令），加速数据密集型计算。</p></li>
-<li><p><strong>与磁盘列式存储互补</strong>：Arrow并非与Parquet和ORC这类磁盘列式存储格式，它专注内存计算，与磁盘列式存储形成互补：磁盘列式存储优化磁盘存储压缩率，Arrow优化内存处理效率。二者结合可覆盖数据从存储到计算的全生命周期高性能需求。</p></li>
+<li><p><strong>与磁盘列式存储互补</strong>：Arrow并非与Parquet和ORC这类磁盘列式存储格式互斥，它专注内存计算，与磁盘列式存储形成互补：磁盘列式存储优化磁盘存储压缩率，Arrow优化内存处理效率。二者结合可覆盖数据从存储到计算的全生命周期高性能需求。</p></li>
 </ul>
 <h2 id="面向内存的列式数据格式">面向内存的列式数据格式</h2>
 <p>面向内存的列式数据格式是Arrow的重要组成部分之一，同时也是实现跨系统高效数据共享的基础。本节着重讲解Arrow的内存数据格式，包括定长类型数据格式、变长类型数据格式、列表数据格式、和结构体数据格式。</p>
