@@ -84,11 +84,11 @@
     
     <tags>
       
-      <tag>论文阅读</tag>
-      
       <tag>分离式内存</tag>
       
       <tag>缓存系统</tag>
+      
+      <tag>论文阅读</tag>
       
     </tags>
     
@@ -113,9 +113,9 @@
     
     <tags>
       
-      <tag>RDMA</tag>
-      
       <tag>论文阅读</tag>
+      
+      <tag>RDMA</tag>
       
     </tags>
     
@@ -140,9 +140,9 @@
     
     <tags>
       
-      <tag>文件系统</tag>
-      
       <tag>论文阅读</tag>
+      
+      <tag>文件系统</tag>
       
       <tag>元数据</tag>
       
@@ -169,9 +169,9 @@
     
     <tags>
       
-      <tag>论文阅读</tag>
-      
       <tag>分离式内存</tag>
+      
+      <tag>论文阅读</tag>
       
       <tag>基数树</tag>
       
@@ -256,9 +256,9 @@
     
     <tags>
       
-      <tag>RDMA</tag>
-      
       <tag>论文阅读</tag>
+      
+      <tag>RDMA</tag>
       
       <tag>Remote Memory</tag>
       
@@ -310,11 +310,11 @@
     
     <tags>
       
-      <tag>文件系统</tag>
-      
       <tag>论文阅读</tag>
       
       <tag>分布式系统</tag>
+      
+      <tag>文件系统</tag>
       
     </tags>
     
